@@ -45,9 +45,75 @@ class AIQuestionParser:
         return text
 
     def _extract_from_docx(self, file_path: str) -> str:
-        """Extract text from DOCX"""
+        """Extract text from DOCX including equations/formulas"""
         doc = docx.Document(file_path)
-        return '\n'.join([paragraph.text for paragraph in doc.paragraphs])
+        full_text = []
+
+        for paragraph in doc.paragraphs:
+            para_text = paragraph.text
+
+            # Check for equations in paragraph
+            for run in paragraph.runs:
+                # Check if run contains equation
+                if run.element.xml:
+                    # Look for math/equation elements
+                    if 'w:drawing' in run.element.xml or 'm:oMath' in run.element.xml:
+                        # Try to extract equation text or mark it
+                        equation_text = self._extract_equation_from_run(run)
+                        if equation_text and equation_text not in para_text:
+                            para_text += f" {equation_text} "
+
+            # Also check for inline shapes and equations at paragraph level
+            para_xml = paragraph._element.xml.decode('utf-8') if isinstance(paragraph._element.xml, bytes) else str(paragraph._element.xml)
+            if 'm:oMath' in para_xml or 'm:oMathPara' in para_xml:
+                # Contains equation
+                equation_markers = self._extract_equations_from_paragraph(paragraph)
+                for eq in equation_markers:
+                    if eq not in para_text:
+                        para_text += f" {eq} "
+
+            full_text.append(para_text)
+
+        return '\n'.join(full_text)
+
+    def _extract_equation_from_run(self, run) -> str:
+        """Try to extract readable equation text from a run"""
+        try:
+            xml_str = run.element.xml.decode('utf-8') if isinstance(run.element.xml, bytes) else str(run.element.xml)
+
+            # Look for math text content
+            if 'm:t' in xml_str:
+                import re
+                # Extract content between m:t tags
+                matches = re.findall(r'<m:t>([^<]+)</m:t>', xml_str)
+                if matches:
+                    return ''.join(matches)
+
+            # If equation is complex, mark it as FORMULA
+            if 'm:oMath' in xml_str:
+                return "[FORMULA]"
+
+        except:
+            pass
+        return ""
+
+    def _extract_equations_from_paragraph(self, paragraph) -> list:
+        """Extract equation markers from paragraph"""
+        equations = []
+        try:
+            xml_str = paragraph._element.xml.decode('utf-8') if isinstance(paragraph._element.xml, bytes) else str(paragraph._element.xml)
+
+            import re
+            # Try to extract math text
+            math_texts = re.findall(r'<m:t>([^<]+)</m:t>', xml_str)
+            if math_texts:
+                equations.append(''.join(math_texts))
+            elif 'm:oMath' in xml_str:
+                equations.append("[FORMULA]")
+
+        except:
+            pass
+        return equations
 
     def parse_with_ai(self, file_path: str, answer_marking: str = None, answer_file_path: str = None) -> List[Dict]:
         """
@@ -88,7 +154,19 @@ CRITICAL INSTRUCTIONS:
 4. Question number in answer key corresponds to question order
 5. Ensure question text is COMPLETE - don't cut off
 6. Ensure ALL options are included
-7. Return ONLY valid JSON, no markdown formatting
+7. PRESERVE [FORMULA] markers and mathematical expressions EXACTLY as they appear
+8. If you see mathematical notation, matrix notation, or equations, keep them in the text
+9. Return ONLY valid JSON, no markdown formatting
+
+IMPORTANT: Mathematical formulas may appear as [FORMULA] or as text like "matrix", "A=", numbers, etc.
+Keep ALL mathematical content in the question and option text.
+
+FORMULA HANDLING:
+- If you see matrix notation or special math symbols, convert to LaTeX format
+- Example: matrix with elements becomes $\\begin{{bmatrix}} 2 & 4 & 1 \\\\ -1 & 3 & -2 \\end{{bmatrix}}$
+- If you see simple equations like "A=", "x^2", keep them but wrap in $ symbols for proper rendering
+- Keep [FORMULA] markers if formula cannot be interpreted
+- Use LaTeX syntax when possible: wrap math in $ for inline or $$ for display
 
 Example: If answer key says "1. B", then for question 1, option B should have "is_correct": true
 
@@ -97,9 +175,9 @@ Return JSON in this EXACT format (must be valid JSON):
   "questions": [
     {{
       "order": 1,
-      "text": "Complete question text?",
+      "text": "Complete question text with formulas?",
       "options": [
-        {{"text": "Option A", "is_correct": false, "order": 0}},
+        {{"text": "Option A with [FORMULA] if present", "is_correct": false, "order": 0}},
         {{"text": "Option B", "is_correct": true, "order": 1}},
         {{"text": "Option C", "is_correct": false, "order": 2}},
         {{"text": "Option D", "is_correct": false, "order": 3}}
@@ -131,16 +209,28 @@ CRITICAL INSTRUCTIONS:
 4. Ensure question text is COMPLETE
 5. Ensure ALL options are included
 6. Remove markers (# or +) from the option text
-7. Return ONLY valid JSON, no markdown formatting
+7. PRESERVE [FORMULA] markers and mathematical expressions EXACTLY as they appear
+8. If you see mathematical notation, matrix notation, or equations, keep them in the text
+9. Return ONLY valid JSON, no markdown formatting
+
+IMPORTANT: Mathematical formulas may appear as [FORMULA] or as text like "matrix", "A=", numbers, etc.
+Keep ALL mathematical content in the question and option text.
+
+FORMULA HANDLING:
+- If you see matrix notation or special math symbols, convert to LaTeX format
+- Example: matrix with elements becomes $\\begin{{bmatrix}} 2 & 4 & 1 \\\\ -1 & 3 & -2 \\end{{bmatrix}}$
+- If you see simple equations like "A=", "x^2", keep them but wrap in $ symbols for proper rendering
+- Keep [FORMULA] markers if formula cannot be interpreted
+- Use LaTeX syntax when possible: wrap math in $ for inline or $$ for display
 
 Return JSON in this EXACT format (must be valid JSON):
 {{
   "questions": [
     {{
       "order": 1,
-      "text": "Complete question text?",
+      "text": "Complete question text with formulas?",
       "options": [
-        {{"text": "Option A", "is_correct": false, "order": 0}},
+        {{"text": "Option A with [FORMULA] if present", "is_correct": false, "order": 0}},
         {{"text": "Option B", "is_correct": true, "order": 1}},
         {{"text": "Option C", "is_correct": false, "order": 2}},
         {{"text": "Option D", "is_correct": false, "order": 3}}
