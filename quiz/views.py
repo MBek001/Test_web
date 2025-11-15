@@ -429,26 +429,35 @@ def admin_user_detail(request, user_name, access_code):
 def login_view(request):
     if request.method == 'POST':
         code = request.POST.get('code', '').strip().upper()
-        name = request.POST.get('name', '').strip()
+        username = request.POST.get('name', '').strip()
 
-        name = ' '.join(name.split())
-
-        if not code or not name:
-            messages.error(request, 'Please enter both access code and your name.')
+        if not code or not username:
+            messages.error(request, 'Iltimos, kirish kodi va foydalanuvchi nomini kiriting.')
             return redirect('login')
+
+        import re
+        if not re.match(r'^[a-zA-Z0-9_-]+$', username):
+            messages.error(request, 'Foydalanuvchi nomi faqat harflar, raqamlar, _ va - belgilaridan iborat bo\'lishi kerak.')
+            return redirect('login')
+
+        if len(username) < 3 or len(username) > 30:
+            messages.error(request, 'Foydalanuvchi nomi 3 dan 30 gacha belgidan iborat bo\'lishi kerak.')
+            return redirect('login')
+
+        username = username.lower()
 
         try:
             access_code = AccessCode.objects.get(code=code)
 
             if not access_code.is_valid():
-                messages.error(request, 'This access code is expired or inactive.')
+                messages.error(request, 'Bu kirish kodi muddati tugagan yoki faol emas.')
                 return redirect('login')
 
             existing_user = UserLogin.objects.filter(access_code=access_code).first()
 
             if existing_user:
-                if existing_user.user_name != name:
-                    messages.error(request, f'Bu kirish kodi allaqochon ishlatilgan , Yangi kod uchun Adminga murojat qiling ')
+                if existing_user.user_name.lower() != username:
+                    messages.error(request, 'Bu kirish kodi allaqachon boshqa foydalanuvchi tomonidan ishlatilgan. Yangi kod uchun adminga murojaat qiling.')
                     return redirect('login')
             else:
                 if not access_code.first_used_at:
@@ -457,19 +466,19 @@ def login_view(request):
 
             user_login, created = UserLogin.objects.update_or_create(
                 access_code=access_code,
-                user_name=name,
+                user_name=username,
                 defaults={'last_activity': timezone.now()}
             )
 
             request.session['access_code_id'] = access_code.id
-            request.session['user_name'] = name
+            request.session['user_name'] = username
             request.session.modified = True
 
-            messages.success(request, f'Welcome, {name}!')
+            messages.success(request, f'Xush kelibsiz, {username}!')
             return redirect('test_list')
 
         except AccessCode.DoesNotExist:
-            messages.error(request, 'Invalid access code. Please check and try again.')
+            messages.error(request, 'Noto\'g\'ri kirish kodi. Iltimos, qaytadan urinib ko\'ring.')
 
     return render(request, 'quiz/login.html')
 
