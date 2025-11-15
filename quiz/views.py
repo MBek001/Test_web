@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.utils import timezone
 from django.db import models
 from django.db.models import Count, Avg, Q, Max
-from .models import Subject, Test, Question, Option, AccessCode, TestSession, UserAnswer
+from .models import Subject, Test, Question, Option, AccessCode, TestSession, UserAnswer, UserLogin
 from .ai_parser import AIQuestionParser
 import os
 
@@ -215,7 +215,7 @@ def admin_test_create(request, subject_id):
     subject = get_object_or_404(Subject, id=subject_id)
 
     if request.method == 'POST':
-        title = request.POST.get('title')
+        title = request.POST.get('title', '').strip()
         description = request.POST.get('description', '')
         question_file = request.FILES.get('question_file')
         answer_file = request.FILES.get('answer_file')
@@ -223,10 +223,12 @@ def admin_test_create(request, subject_id):
         time_limit = int(request.POST.get('time_limit', 60))
         passing_score = int(request.POST.get('passing_score', 70))
 
-        # Create test
+        if not title and question_file:
+            title = os.path.splitext(question_file.name)[0]
+
         test = Test.objects.create(
             subject=subject,
-            title=title,
+            title=title or 'Test',
             description=description,
             question_file=question_file,
             answer_file=answer_file if answer_file else None,
@@ -370,15 +372,30 @@ def admin_session_detail(request, session_id):
 @login_required
 @user_passes_test(is_staff)
 def admin_users(request):
-    """View all users (from test sessions)"""
-    sessions = TestSession.objects.values('user_name', 'access_code__code').annotate(
-        total_tests=Count('id'),
-        completed_tests=Count('id', filter=Q(is_completed=True)),
-        avg_score=Avg('score', filter=Q(is_completed=True)),
-        last_activity=Max('started_at')
-    ).order_by('-last_activity')
+    """View all logged in users"""
+    users_data = []
 
-    context = {'users': sessions}
+    for user_login in UserLogin.objects.select_related('access_code').order_by('-last_activity'):
+        sessions = TestSession.objects.filter(
+            user_name=user_login.user_name,
+            access_code=user_login.access_code
+        )
+
+        total_tests = sessions.count()
+        completed = sessions.filter(is_completed=True)
+        avg_score = completed.aggregate(avg=Avg('score'))['avg']
+
+        users_data.append({
+            'user_name': user_login.user_name,
+            'access_code__code': user_login.access_code.code,
+            'total_tests': total_tests,
+            'completed_tests': completed.count(),
+            'avg_score': avg_score,
+            'last_activity': user_login.last_activity,
+            'login_at': user_login.login_at
+        })
+
+    context = {'users': users_data}
     return render(request, 'admin_custom/users.html', context)
 
 
@@ -432,6 +449,12 @@ def login_view(request):
             if not access_code.first_used_at:
                 access_code.first_used_at = timezone.now()
                 access_code.save()
+
+            UserLogin.objects.update_or_create(
+                access_code=access_code,
+                user_name=name,
+                defaults={'last_activity': timezone.now()}
+            )
 
             request.session['access_code_id'] = access_code.id
             request.session['user_name'] = name
