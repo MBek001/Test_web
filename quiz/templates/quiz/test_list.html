@@ -1,6 +1,6 @@
 {% extends 'quiz/base.html' %}
 
-{% block title %}Available Tests{% endblock %}
+{% block title %}Mavjud Testlar{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -83,16 +83,16 @@
 
 {% block content %}
 <div class="welcome-section">
-    <h2>Welcome, {{ user_name }}!</h2>
-    <p style="font-size: 18px; opacity: 0.9;">Choose a test below to begin</p>
+    <h2>Xush kelibsiz, {{ user_name }}!</h2>
+    <p style="font-size: 18px; opacity: 0.9;">Boshlash uchun quyidagi testlardan birini tanlang</p>
     {% if remaining_attempts is not None %}
-    <p style="margin-top: 10px; opacity: 0.8;">Remaining attempts: {{ remaining_attempts }}</p>
+    <p style="margin-top: 10px; opacity: 0.8;">Qolgan urinishlar: {{ remaining_attempts }}</p>
     {% endif %}
 </div>
 
 {% if remaining_attempts is not None and remaining_attempts == 0 %}
 <div class="attempts-warning">
-    You have used all your attempts. Please contact the administrator for more access.
+    Siz barcha urinishlardan foydalandingiz. Qo'shimcha kirish uchun administrator bilan bog'laning.
 </div>
 {% endif %}
 
@@ -113,19 +113,19 @@
                 {% endif %}
 
                 <div class="test-meta">
-                    <span>{{ test.question_count }} Questions</span>
+                    <span>{{ test.question_count }} ta savol</span>
                     {% if test.time_limit > 0 %}
-                    <span>{{ test.time_limit }} mins</span>
+                    <span>{{ test.time_limit }} daqiqa</span>
                     {% else %}
-                    <span>No time limit</span>
+                    <span>Vaqt cheklovi yo'q</span>
                     {% endif %}
-                    <span>Pass: {{ test.passing_score }}%</span>
+                    <span>O'tish bali: {{ test.passing_score }}%</span>
                 </div>
 
                 {% if remaining_attempts is None or remaining_attempts > 0 %}
-                <a href="{% url 'start_test' test.id %}" class="btn" style="width: 100%; text-align: center;">Start Test</a>
+                <a href="{% url 'start_test' test.id %}" class="btn" style="width: 100%; text-align: center;">Testni Boshlash</a>
                 {% else %}
-                <button class="btn btn-secondary" style="width: 100%;" disabled>No attempts left</button>
+                <button class="btn btn-secondary" style="width: 100%;" disabled>Urinishlar qolmagan</button>
                 {% endif %}
             </div>
             {% endfor %}
@@ -134,8 +134,8 @@
     {% endfor %}
 {% else %}
 <div class="no-tests">
-    <h3>No Tests Available</h3>
-    <p>There are no published tests at the moment. Please check back later.</p>
+    <h3>Testlar Mavjud Emas</h3>
+    <p>Hozircha nashr etilgan testlar yo'q. Keyinroq tekshiring.</p>
 </div>
 {% endif %}
 {% endblock %}

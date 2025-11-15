@@ -127,9 +127,15 @@ class AccessCode(models.Model):
 
 class TestSession(models.Model):
     """Track user test sessions - SUPPORTS MULTIPLE USERS PER CODE"""
+    TEST_MODE_CHOICES = [
+        ('one_by_one', 'Birma-bir (istalgan vaqtda yakunlash)'),  # One by one (finish anytime)
+        ('batch_25', '25 ta savol (hammasi birdan)')  # 25 questions at once
+    ]
+
     access_code = models.ForeignKey(AccessCode, on_delete=models.CASCADE, related_name='sessions')
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='sessions')
     user_name = models.CharField(max_length=200, default='Unknown User', help_text='Name of the user taking this test')
+    test_mode = models.CharField(max_length=20, choices=TEST_MODE_CHOICES, default='batch_25')
 
     # Session info
     started_at = models.DateTimeField(auto_now_add=True)

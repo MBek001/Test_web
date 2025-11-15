@@ -78,29 +78,35 @@ class AIQuestionParser:
 QUESTION TEXT:
 {question_text}
 
-ANSWER TEXT (format: 1.A, 2.B, etc.):
+ANSWER KEY (format like: 1. B, 2. C, 3. D, etc.):
 {answer_text}
 
-IMPORTANT RULES:
-1. Extract EVERY SINGLE question - don't skip any
-2. Extract ALL options for each question (A, B, C, D, etc.)
-3. Match answers from the answer text to mark correct options
-4. Return in EXACT JSON format shown below
-5. Ensure question text is COMPLETE
+CRITICAL INSTRUCTIONS:
+1. Extract EVERY SINGLE question (all 100 questions if there are 100)
+2. For each question, extract ALL options (A, B, C, D, etc.)
+3. Match the answer key to mark which option is correct
+4. Question number in answer key corresponds to question order
+5. Ensure question text is COMPLETE - don't cut off
 6. Ensure ALL options are included
+7. Return ONLY valid JSON, no markdown formatting
 
-Return a JSON array of questions in this EXACT format:
-[
-  {{
-    "order": 1,
-    "text": "Complete question text here?",
-    "options": [
-      {{"text": "Option A text", "is_correct": false, "order": 0}},
-      {{"text": "Option B text", "is_correct": true, "order": 1}},
-      {{"text": "Option C text", "is_correct": false, "order": 2}}
-    ]
-  }}
-]
+Example: If answer key says "1. B", then for question 1, option B should have "is_correct": true
+
+Return JSON in this EXACT format (must be valid JSON):
+{{
+  "questions": [
+    {{
+      "order": 1,
+      "text": "Complete question text?",
+      "options": [
+        {{"text": "Option A", "is_correct": false, "order": 0}},
+        {{"text": "Option B", "is_correct": true, "order": 1}},
+        {{"text": "Option C", "is_correct": false, "order": 2}},
+        {{"text": "Option D", "is_correct": false, "order": 3}}
+      ]
+    }}
+  ]
+}}
 
 Extract ALL questions now:"""
         else:
@@ -118,27 +124,30 @@ TEXT:
 
 ANSWER MARKING: {marker_info}
 
-IMPORTANT RULES:
+CRITICAL INSTRUCTIONS:
 1. Extract EVERY SINGLE question - don't skip any
 2. Extract ALL options for each question (A, B, C, D, etc.)
-3. Identify correct answers by the markers
-4. Return in EXACT JSON format shown below
-5. Ensure question text is COMPLETE
-6. Ensure ALL options are included
-7. Remove markers (# or +++) from the option text
+3. Identify correct answers by the markers (# at start or + at end)
+4. Ensure question text is COMPLETE
+5. Ensure ALL options are included
+6. Remove markers (# or +) from the option text
+7. Return ONLY valid JSON, no markdown formatting
 
-Return a JSON array of questions in this EXACT format:
-[
-  {{
-    "order": 1,
-    "text": "Complete question text here?",
-    "options": [
-      {{"text": "Option A text", "is_correct": false, "order": 0}},
-      {{"text": "Option B text", "is_correct": true, "order": 1}},
-      {{"text": "Option C text", "is_correct": false, "order": 2}}
-    ]
-  }}
-]
+Return JSON in this EXACT format (must be valid JSON):
+{{
+  "questions": [
+    {{
+      "order": 1,
+      "text": "Complete question text?",
+      "options": [
+        {{"text": "Option A", "is_correct": false, "order": 0}},
+        {{"text": "Option B", "is_correct": true, "order": 1}},
+        {{"text": "Option C", "is_correct": false, "order": 2}},
+        {{"text": "Option D", "is_correct": false, "order": 3}}
+      ]
+    }}
+  ]
+}}
 
 Extract ALL questions now:"""
 

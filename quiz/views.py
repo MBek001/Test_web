@@ -464,7 +464,7 @@ def test_list(request):
 
 
 def start_test(request, test_id):
-    """Start a test"""
+    """Show test mode selection page"""
     if 'access_code_id' not in request.session or 'user_name' not in request.session:
         return redirect('login')
 
@@ -479,25 +479,36 @@ def start_test(request, test_id):
             user_name=user_name
         ).count()
         if user_attempts >= access_code.max_attempts_per_user:
-            messages.error(request, 'You have reached the maximum number of attempts.')
+            messages.error(request, 'Maksimal urinishlar soniga yetdingiz.')
             return redirect('test_list')
 
-    # Create new test session with user_name
-    session = TestSession.objects.create(
-        access_code=access_code,
-        test=test,
-        user_name=user_name,
-        total_questions=test.questions.count()
-    )
+    if request.method == 'POST':
+        test_mode = request.POST.get('test_mode', 'batch_25')
 
-    request.session['test_session_id'] = session.id
-    request.session['test_start_time'] = timezone.now().isoformat()
+        # Create new test session with user_name and selected mode
+        session = TestSession.objects.create(
+            access_code=access_code,
+            test=test,
+            user_name=user_name,
+            test_mode=test_mode,
+            total_questions=test.questions.count()
+        )
 
-    return redirect('take_test')
+        request.session['test_session_id'] = session.id
+        request.session['test_start_time'] = timezone.now().isoformat()
+        request.session['current_question'] = 0  # For one-by-one mode
+
+        return redirect('take_test')
+
+    context = {
+        'test': test,
+        'question_count': test.questions.count()
+    }
+    return render(request, 'quiz/select_mode.html', context)
 
 
 def take_test(request):
-    """Take test page"""
+    """Take test page - supports two modes"""
     if 'test_session_id' not in request.session:
         return redirect('test_list')
 
@@ -506,55 +517,118 @@ def take_test(request):
     if session.is_completed:
         return redirect('test_results', session_id=session.id)
 
-    questions = session.test.questions.all().prefetch_related('options')
+    all_questions = session.test.questions.all().order_by('order').prefetch_related('options')
     answered = UserAnswer.objects.filter(session=session).values_list('question_id', flat=True)
 
-    if request.method == 'POST':
-        # Save answers
-        for question in questions:
-            option_id = request.POST.get(f'question_{question.id}')
+    # ONE-BY-ONE MODE: Show one question at a time
+    if session.test_mode == 'one_by_one':
+        current_index = request.session.get('current_question', 0)
+
+        if request.method == 'POST':
+            # Save current answer
+            current_question = all_questions[current_index]
+            option_id = request.POST.get(f'question_{current_question.id}')
             if option_id:
-                option = get_object_or_404(Option, id=option_id, question=question)
+                option = get_object_or_404(Option, id=option_id, question=current_question)
                 UserAnswer.objects.update_or_create(
                     session=session,
-                    question=question,
+                    question=current_question,
                     defaults={
                         'selected_option': option,
                         'is_correct': option.is_correct
                     }
                 )
 
-        if 'submit_test' in request.POST:
-            correct = UserAnswer.objects.filter(session=session, is_correct=True).count()
-            session.correct_answers = correct
-            session.score = session.calculate_score()
-            session.is_completed = True
-            session.completed_at = timezone.now()
-            session.save()
-            return redirect('test_results', session_id=session.id)
+            if 'finish_test' in request.POST:
+                # Finish test
+                correct = UserAnswer.objects.filter(session=session, is_correct=True).count()
+                session.correct_answers = correct
+                session.total_questions = UserAnswer.objects.filter(session=session).count()
+                session.score = session.calculate_score()
+                session.is_completed = True
+                session.completed_at = timezone.now()
+                session.save()
+                return redirect('test_results', session_id=session.id)
 
-        messages.success(request, 'Progress saved!')
-        return redirect('take_test')
+            # Move to next question
+            current_index += 1
+            request.session['current_question'] = current_index
 
-    # Calculate time remaining
-    time_remaining = None
-    if session.test.time_limit > 0:
-        start_time = timezone.datetime.fromisoformat(request.session['test_start_time'])
-        if timezone.is_aware(start_time):
-            elapsed = (timezone.now() - start_time).total_seconds() / 60
-        else:
-            start_time = timezone.make_aware(start_time)
-            elapsed = (timezone.now() - start_time).total_seconds() / 60
-        time_remaining = max(0, session.test.time_limit - elapsed)
+            if current_index >= all_questions.count():
+                # All questions answered
+                messages.info(request, 'Barcha savollarga javob berdingiz. Testni yakunlashingiz mumkin.')
+                current_index = all_questions.count() - 1
+                request.session['current_question'] = current_index
 
-    context = {
-        'session': session,
-        'questions': questions,
-        'answered_ids': list(answered),
-        'time_remaining': time_remaining,
-        'user_name': session.user_name
-    }
-    return render(request, 'quiz/take_test.html', context)
+            messages.success(request, 'Javob saqlandi!')
+            return redirect('take_test')
+
+        # Show current question
+        if current_index >= all_questions.count():
+            current_index = all_questions.count() - 1
+
+        current_question = all_questions[current_index]
+
+        context = {
+            'session': session,
+            'question': current_question,
+            'current_index': current_index,
+            'total_questions': all_questions.count(),
+            'answered_count': UserAnswer.objects.filter(session=session).count(),
+            'user_name': session.user_name,
+            'mode': 'one_by_one'
+        }
+        return render(request, 'quiz/take_test.html', context)
+
+    # BATCH_25 MODE: Show 25 questions at once
+    else:
+        if request.method == 'POST':
+            # Save answers for all 25 questions
+            for question in all_questions[:25]:
+                option_id = request.POST.get(f'question_{question.id}')
+                if option_id:
+                    option = get_object_or_404(Option, id=option_id, question=question)
+                    UserAnswer.objects.update_or_create(
+                        session=session,
+                        question=question,
+                        defaults={
+                            'selected_option': option,
+                            'is_correct': option.is_correct
+                        }
+                    )
+
+            if 'submit_test' in request.POST:
+                correct = UserAnswer.objects.filter(session=session, is_correct=True).count()
+                session.correct_answers = correct
+                session.score = session.calculate_score()
+                session.is_completed = True
+                session.completed_at = timezone.now()
+                session.save()
+                return redirect('test_results', session_id=session.id)
+
+            messages.success(request, 'Javoblar saqlandi!')
+            return redirect('take_test')
+
+        # Calculate time remaining
+        time_remaining = None
+        if session.test.time_limit > 0:
+            start_time = timezone.datetime.fromisoformat(request.session['test_start_time'])
+            if timezone.is_aware(start_time):
+                elapsed = (timezone.now() - start_time).total_seconds() / 60
+            else:
+                start_time = timezone.make_aware(start_time)
+                elapsed = (timezone.now() - start_time).total_seconds() / 60
+            time_remaining = max(0, session.test.time_limit - elapsed)
+
+        context = {
+            'session': session,
+            'questions': all_questions[:25],
+            'answered_ids': list(answered),
+            'time_remaining': time_remaining,
+            'user_name': session.user_name,
+            'mode': 'batch_25'
+        }
+        return render(request, 'quiz/take_test.html', context)
 
 
 def test_results(request, session_id):

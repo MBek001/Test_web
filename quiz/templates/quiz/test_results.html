@@ -1,6 +1,6 @@
 {% extends 'quiz/base.html' %}
 
-{% block title %}Test Results - {{ session.test.title }}{% endblock %}
+{% block title %}Test Natijalari - {{ session.test.title }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -133,62 +133,62 @@
 
 {% block content %}
 <div class="results-header {% if passed %}passed{% else %}failed{% endif %}">
-    <h2>{% if passed %}Congratulations!{% else %}Test Completed{% endif %}</h2>
+    <h2>{% if passed %}Tabriklaymiz!{% else %}Test Yakunlandi{% endif %}</h2>
     <div class="score-display">{{ session.score }}%</div>
     <p style="font-size: 18px;">
         {% if passed %}
-        You passed the test!
+        Siz testdan muvaffaqiyatli o'tdingiz!
         {% else %}
-        You did not meet the passing score of {{ session.test.passing_score }}%
+        Siz o'tish balliga ({{ session.test.passing_score }}%) yetmadingiz
         {% endif %}
     </p>
 </div>
 
 <div class="results-stats">
     <div class="stat-card">
-        <h3>Total Questions</h3>
+        <h3>Jami Savollar</h3>
         <div class="stat-value">{{ session.total_questions }}</div>
     </div>
     <div class="stat-card">
-        <h3>Correct Answers</h3>
+        <h3>To'g'ri Javoblar</h3>
         <div class="stat-value" style="color: #28a745;">{{ session.correct_answers }}</div>
     </div>
     <div class="stat-card">
-        <h3>Incorrect Answers</h3>
+        <h3>Noto'g'ri Javoblar</h3>
         <div class="stat-value" style="color: #dc3545;">{{ session.total_questions|add:"-"|add:session.correct_answers }}</div>
     </div>
     <div class="stat-card">
-        <h3>Accuracy</h3>
+        <h3>Aniqlik</h3>
         <div class="stat-value">{{ session.score|floatformat:0 }}%</div>
     </div>
 </div>
 
 <div class="answers-review">
-    <h3>Detailed Review</h3>
+    <h3>Batafsil Ko'rib Chiqish</h3>
 
     {% for answer in answers %}
     <div class="answer-item {% if answer.is_correct %}correct{% else %}incorrect{% endif %}">
         <div class="answer-status {% if answer.is_correct %}correct{% else %}incorrect{% endif %}">
-            {% if answer.is_correct %}✓ Correct{% else %}✗ Incorrect{% endif %}
+            {% if answer.is_correct %}✓ To'g'ri{% else %}✗ Noto'g'ri{% endif %}
         </div>
 
         <div class="question-text">
-            Question {{ answer.question.order }}: {{ answer.question.text }}
+            Savol {{ answer.question.order }}: {{ answer.question.text }}
         </div>
 
         {% if answer.selected_option %}
         <div class="selected-answer">
-            <strong>Your Answer:</strong> {{ answer.selected_option.text }}
+            <strong>Sizning Javobingiz:</strong> {{ answer.selected_option.text }}
         </div>
         {% else %}
         <div class="selected-answer">
-            <strong>Your Answer:</strong> <em>Not answered</em>
+            <strong>Sizning Javobingiz:</strong> <em>Javob berilmagan</em>
         </div>
         {% endif %}
 
         {% if not answer.is_correct %}
         <div class="correct-answer">
-            <strong>Correct Answer:</strong>
+            <strong>To'g'ri Javob:</strong>
             {% for option in answer.question.options.all %}
                 {% if option.is_correct %}
                     {{ option.text }}
@@ -201,6 +201,6 @@
 </div>
 
 <div class="action-buttons">
-    <a href="{% url 'subject_selection' %}" class="btn">Back to Subjects</a>
+    <a href="{% url 'test_list' %}" class="btn">Testlarga Qaytish</a>
 </div>
 {% endblock %}

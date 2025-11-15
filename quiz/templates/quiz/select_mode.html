@@ -1,0 +1,164 @@
+{% extends 'quiz/base.html' %}
+
+{% block title %}Test Rejimini Tanlang{% endblock %}
+
+{% block extra_css %}
+<style>
+    .mode-selection {
+        max-width: 800px;
+        margin: 50px auto;
+        padding: 20px;
+    }
+    .mode-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    .mode-header h1 {
+        color: #2c3e50;
+        margin-bottom: 10px;
+    }
+    .mode-header p {
+        color: #7f8c8d;
+        font-size: 16px;
+    }
+    .mode-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+    .mode-card {
+        background: white;
+        border: 3px solid #ecf0f1;
+        border-radius: 12px;
+        padding: 30px;
+        text-align: center;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    .mode-card:hover {
+        border-color: #667eea;
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+        transform: translateY(-5px);
+    }
+    .mode-card.selected {
+        border-color: #667eea;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .mode-card.selected h3,
+    .mode-card.selected p,
+    .mode-card.selected .mode-icon {
+        color: white;
+    }
+    .mode-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+        color: #667eea;
+    }
+    .mode-card h3 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+        font-size: 22px;
+    }
+    .mode-card p {
+        color: #7f8c8d;
+        line-height: 1.6;
+        margin-bottom: 10px;
+    }
+    .mode-card ul {
+        text-align: left;
+        margin: 15px 0;
+        padding-left: 20px;
+    }
+    .mode-card ul li {
+        margin: 8px 0;
+        color: #555;
+    }
+    .mode-card.selected ul li {
+        color: white;
+    }
+    .start-button {
+        text-align: center;
+        margin-top: 30px;
+    }
+    .start-button button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px 50px;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .start-button button:hover {
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        transform: translateY(-2px);
+    }
+    .start-button button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mode-selection">
+    <div class="mode-header">
+        <h1>Test Rejimini Tanlang</h1>
+        <p><strong>{{ test.title }}</strong> - {{ question_count }} ta savol</p>
+    </div>
+
+    <form method="post" id="modeForm">
+        {% csrf_token %}
+        <input type="hidden" name="test_mode" id="selectedMode" value="batch_25">
+
+        <div class="mode-cards">
+            <div class="mode-card" onclick="selectMode('one_by_one', this)">
+                <div class="mode-icon">⏭️</div>
+                <h3>Birma-bir</h3>
+                <p><strong>Savollarni bitta-bitta yechasiz</strong></p>
+                <ul>
+                    <li>Har bir savolga javob bergandan so'ng keyingisiga o'tasiz</li>
+                    <li>Istalgan vaqtda testni yakunlashingiz mumkin</li>
+                    <li>Hozircha yechilgan savollar bo'yicha natija olasiz</li>
+                    <li>Qulayroq va bosqichma-bosqich</li>
+                </ul>
+            </div>
+
+            <div class="mode-card selected" onclick="selectMode('batch_25', this)">
+                <div class="mode-icon">📝</div>
+                <h3>25 ta savol</h3>
+                <p><strong>25 ta savolni birdan ko'rasiz</strong></p>
+                <ul>
+                    <li>Barcha 25 ta savol ekranda ko'rinadi</li>
+                    <li>Istalgan savolga javob berishingiz mumkin</li>
+                    <li>Hammasini yechib bo'lgach yakunlaysiz</li>
+                    <li>Standart test rejimi</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="start-button">
+            <button type="submit" class="btn">Testni Boshlash</button>
+        </div>
+    </form>
+</div>
+
+<script>
+function selectMode(mode, element) {
+    // Remove selected class from all cards
+    document.querySelectorAll('.mode-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+
+    // Add selected class to clicked card
+    element.classList.add('selected');
+
+    // Update hidden input
+    document.getElementById('selectedMode').value = mode;
+}
+</script>
+{% endblock %}

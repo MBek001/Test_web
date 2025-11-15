@@ -161,17 +161,22 @@
 <div class="test-header">
     <h2>{{ session.test.title }}</h2>
     <div class="test-info">
-        <span>Total Questions: {{ session.total_questions }}</span>
-        {% if session.test.time_limit > 0 %}
-        <span>Time Limit: {{ session.test.time_limit }} minutes</span>
+        {% if mode == 'one_by_one' %}
+        <span>Savol {{ current_index|add:1 }} / {{ total_questions }}</span>
+        <span>Javob berilgan: {{ answered_count }}</span>
+        {% else %}
+        <span>Jami savollar: {{ session.total_questions }}</span>
         {% endif %}
-        <span>Passing Score: {{ session.test.passing_score }}%</span>
+        {% if session.test.time_limit > 0 and mode == 'batch_25' %}
+        <span>Vaqt: {{ session.test.time_limit }} daqiqa</span>
+        {% endif %}
+        <span>O'tish bali: {{ session.test.passing_score }}%</span>
     </div>
 </div>
 
-{% if time_remaining is not None %}
+{% if time_remaining is not None and mode == 'batch_25' %}
 <div class="timer" id="timer">
-    <h3>Time Remaining</h3>
+    <h3>Qolgan vaqt</h3>
     <div class="timer-display" id="timer-display">
         <span id="minutes">{{ time_remaining|floatformat:0 }}</span>:<span id="seconds">00</span>
     </div>
@@ -181,41 +186,82 @@
 <form method="post" id="testForm">
     {% csrf_token %}
 
-    <div class="question-list">
-        {% for question in questions %}
-        <div class="question-item" id="question-{{ question.id }}">
-            <div class="question-number">Question {{ question.order }}</div>
-            <div class="question-text">{{ question.text }}</div>
+    {% if mode == 'one_by_one' %}
+        <!-- ONE-BY-ONE MODE: Show single question -->
+        <div class="question-list">
+            <div class="question-item">
+                <div class="question-number">Savol {{ current_index|add:1 }}</div>
+                <div class="question-text">{{ question.text }}</div>
 
-            <ul class="options-list">
-                {% for option in question.options.all %}
-                <li class="option-item">
-                    <label class="option-label">
-                        <input type="radio"
-                               name="question_{{ question.id }}"
-                               value="{{ option.id }}"
-                               {% if option.id in answered_ids %}checked{% endif %}>
-                        <span>{{ option.text }}</span>
-                    </label>
-                </li>
-                {% endfor %}
-            </ul>
+                <ul class="options-list">
+                    {% for option in question.options.all %}
+                    <li class="option-item">
+                        <label class="option-label">
+                            <input type="radio"
+                                   name="question_{{ question.id }}"
+                                   value="{{ option.id }}"
+                                   required>
+                            <span>{{ option.text }}</span>
+                        </label>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
         </div>
-        {% endfor %}
-    </div>
 
-    <div class="submit-section">
-        <p>Make sure you have answered all questions before submitting.</p>
-        <div class="button-group">
-            <button type="submit" name="save_progress" class="btn btn-secondary">Save Progress</button>
-            <button type="submit" name="submit_test" class="btn btn-success" onclick="return confirm('Are you sure you want to submit? You cannot change your answers after submitting.')">Submit Test</button>
+        <div class="submit-section">
+            {% if current_index|add:1 < total_questions %}
+                <p>Javobingizni tanlang va keyingi savolga o'ting</p>
+                <div class="button-group">
+                    <button type="submit" class="btn">Keyingi savol</button>
+                    <button type="submit" name="finish_test" class="btn btn-secondary" onclick="return confirm('Testni yakunlamoqchimisiz? Hozircha {{ answered_count|add:1 }} ta savolga javob berdingiz.')">Testni yakunlash</button>
+                </div>
+            {% else %}
+                <p>Bu oxirgi savol. Testni yakunlang.</p>
+                <div class="button-group">
+                    <button type="submit" name="finish_test" class="btn btn-success" onclick="return confirm('Testni yakunlamoqchimisiz?')">Testni yakunlash</button>
+                </div>
+            {% endif %}
         </div>
-    </div>
+
+    {% else %}
+        <!-- BATCH_25 MODE: Show 25 questions -->
+        <div class="question-list">
+            {% for question in questions %}
+            <div class="question-item" id="question-{{ question.id }}">
+                <div class="question-number">Savol {{ question.order }}</div>
+                <div class="question-text">{{ question.text }}</div>
+
+                <ul class="options-list">
+                    {% for option in question.options.all %}
+                    <li class="option-item">
+                        <label class="option-label">
+                            <input type="radio"
+                                   name="question_{{ question.id }}"
+                                   value="{{ option.id }}"
+                                   {% if option.id in answered_ids %}checked{% endif %}>
+                            <span>{{ option.text }}</span>
+                        </label>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="submit-section">
+            <p>Testni topshirishdan oldin barcha savollarga javob berganingizga ishonch hosil qiling.</p>
+            <div class="button-group">
+                <button type="submit" name="save_progress" class="btn btn-secondary">Jarayonni saqlash</button>
+                <button type="submit" name="submit_test" class="btn btn-success" onclick="return confirm('Testni topshirmoqchimisiz? Topshirgandan keyin javoblarni o\\'zgartira olmaysiz.')">Testni topshirish</button>
+            </div>
+        </div>
+    {% endif %}
 </form>
 {% endblock %}
 
 {% block extra_js %}
-{% if time_remaining is not None %}
+{% if time_remaining is not None and mode == 'batch_25' %}
 <script>
     let totalSeconds = {{ time_remaining|floatformat:0 }} * 60;
 
@@ -235,7 +281,7 @@
         }
 
         if (totalSeconds <= 0) {
-            alert('Time is up! Your test will be submitted automatically.');
+            alert('Vaqt tugadi! Test avtomatik topshiriladi.');
             document.getElementById('testForm').submit();
             return;
         }
