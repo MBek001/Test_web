@@ -10,16 +10,11 @@ from .ai_parser import AIQuestionParser
 import os
 
 
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
 def is_staff(user):
     return user.is_authenticated and user.is_staff
 
 
 def parse_test_file(test):
-    """Parse test file using AI"""
     try:
         parser = AIQuestionParser()
         question_file_path = test.question_file.path
@@ -57,12 +52,7 @@ def parse_test_file(test):
         return False
 
 
-# ============================================================================
-# ADMIN VIEWS
-# ============================================================================
-
 def admin_register(request):
-    """One-time admin registration"""
     from django.contrib.auth.models import User
 
     if User.objects.filter(is_staff=True).exists():
@@ -103,7 +93,6 @@ def admin_register(request):
 
 
 def admin_login(request):
-    """Admin login"""
     from django.contrib.auth.models import User
 
     if not User.objects.filter(is_staff=True).exists():
@@ -129,7 +118,6 @@ def admin_login(request):
 
 
 def admin_logout(request):
-    """Admin logout"""
     auth_logout(request)
     messages.success(request, 'Logged out successfully.')
     return redirect('admin_login')
@@ -138,7 +126,6 @@ def admin_logout(request):
 @login_required
 @user_passes_test(is_staff)
 def admin_dashboard(request):
-    """Admin dashboard"""
     used_codes = AccessCode.objects.annotate(
         session_count=Count('sessions')
     ).filter(session_count__gt=0).count()
@@ -158,7 +145,6 @@ def admin_dashboard(request):
 @login_required
 @user_passes_test(is_staff)
 def admin_subjects(request):
-    """List all subjects"""
     subjects = Subject.objects.annotate(test_count=Count('tests')).order_by('name')
     return render(request, 'admin_custom/subjects.html', {'subjects': subjects})
 
@@ -166,7 +152,6 @@ def admin_subjects(request):
 @login_required
 @user_passes_test(is_staff)
 def admin_subject_create(request):
-    """Create new subject"""
     if request.method == 'POST':
         subject_name = request.POST.get('subject_name')
         subject_description = request.POST.get('subject_description', '')
@@ -185,7 +170,6 @@ def admin_subject_create(request):
 @login_required
 @user_passes_test(is_staff)
 def admin_subject_detail(request, subject_id):
-    """View and manage subject"""
     subject = get_object_or_404(Subject, id=subject_id)
     tests = subject.tests.annotate(question_count=Count('questions')).order_by('-created_at')
 
@@ -211,7 +195,6 @@ def admin_subject_detail(request, subject_id):
 @login_required
 @user_passes_test(is_staff)
 def admin_test_create(request, subject_id):
-    """Create new test"""
     subject = get_object_or_404(Subject, id=subject_id)
 
     if request.method == 'POST':
@@ -237,7 +220,6 @@ def admin_test_create(request, subject_id):
             passing_score=passing_score,
         )
 
-        # Auto-parse
         try:
             success = parse_test_file(test)
             if success:
@@ -257,7 +239,6 @@ def admin_test_create(request, subject_id):
 @login_required
 @user_passes_test(is_staff)
 def admin_test_detail(request, test_id):
-    """View and manage test"""
     test = get_object_or_404(Test, id=test_id)
     questions = test.questions.prefetch_related('options').order_by('order')
 
@@ -305,6 +286,7 @@ def admin_test_detail(request, test_id):
             question.text = request.POST.get('question_text')
             question.save()
             messages.success(request, 'Question updated!')
+            return redirect(f'/admin/test/{test.id}/#q{question_id}')
 
         elif action == 'edit_option':
             option_id = request.POST.get('option_id')
@@ -315,6 +297,7 @@ def admin_test_detail(request, test_id):
 
             option.question.options.exclude(id=option_id).update(is_correct=False) if option.is_correct else None
             messages.success(request, 'Option updated!')
+            return redirect(f'/admin/test/{test.id}/#q{option.question.id}')
 
         elif action == 'delete_question':
             question_id = request.POST.get('question_id')
@@ -329,7 +312,6 @@ def admin_test_detail(request, test_id):
 @login_required
 @user_passes_test(is_staff)
 def admin_codes(request):
-    """Manage access codes"""
     codes = AccessCode.objects.select_related('subject').annotate(
         session_count=Count('sessions')
     ).order_by('-created_at')
@@ -363,7 +345,6 @@ def admin_codes(request):
 @login_required
 @user_passes_test(is_staff)
 def admin_results(request):
-    """View all results"""
     sessions = TestSession.objects.filter(is_completed=True).select_related(
         'access_code', 'test', 'test__subject'
     ).order_by('-completed_at')
@@ -382,7 +363,6 @@ def admin_results(request):
 @login_required
 @user_passes_test(is_staff)
 def admin_session_detail(request, session_id):
-    """View session details"""
     session = get_object_or_404(TestSession, id=session_id)
     answers = UserAnswer.objects.filter(session=session).select_related(
         'question', 'selected_option'
@@ -395,7 +375,6 @@ def admin_session_detail(request, session_id):
 @login_required
 @user_passes_test(is_staff)
 def admin_users(request):
-    """View all logged in users"""
     users_data = []
 
     for user_login in UserLogin.objects.select_related('access_code').order_by('-last_activity'):
@@ -425,7 +404,6 @@ def admin_users(request):
 @login_required
 @user_passes_test(is_staff)
 def admin_user_detail(request, user_name, access_code):
-    """View individual user details"""
     from django.utils.http import unquote
     user_name = unquote(user_name)
 
@@ -448,15 +426,12 @@ def admin_user_detail(request, user_name, access_code):
     return render(request, 'admin_custom/user_detail.html', context)
 
 
-# ============================================================================
-# USER VIEWS
-# ============================================================================
-
 def login_view(request):
-    """User login with access code"""
     if request.method == 'POST':
         code = request.POST.get('code', '').strip().upper()
         name = request.POST.get('name', '').strip()
+
+        name = ' '.join(name.split())
 
         if not code or not name:
             messages.error(request, 'Please enter both access code and your name.')
@@ -473,7 +448,7 @@ def login_view(request):
                 access_code.first_used_at = timezone.now()
                 access_code.save()
 
-            UserLogin.objects.update_or_create(
+            user_login, created = UserLogin.objects.update_or_create(
                 access_code=access_code,
                 user_name=name,
                 defaults={'last_activity': timezone.now()}
@@ -481,6 +456,7 @@ def login_view(request):
 
             request.session['access_code_id'] = access_code.id
             request.session['user_name'] = name
+            request.session.modified = True
 
             messages.success(request, f'Welcome, {name}!')
             return redirect('test_list')
@@ -492,7 +468,6 @@ def login_view(request):
 
 
 def test_list(request):
-    """List available tests"""
     if 'access_code_id' not in request.session:
         return redirect('login')
 
@@ -538,7 +513,6 @@ def test_list(request):
 
 
 def start_test(request, test_id):
-    """Show test mode selection page"""
     if 'access_code_id' not in request.session or 'user_name' not in request.session:
         return redirect('login')
 
@@ -546,7 +520,6 @@ def start_test(request, test_id):
     test = get_object_or_404(Test, id=test_id, is_published=True)
     user_name = request.session['user_name']
 
-    # Check max attempts per user
     if access_code.max_attempts_per_user > 0:
         user_attempts = TestSession.objects.filter(
             access_code=access_code,
@@ -587,7 +560,6 @@ def start_test(request, test_id):
 
 
 def take_test(request):
-    """Take test page - supports two modes"""
     if 'test_session_id' not in request.session:
         return redirect('test_list')
 
@@ -715,7 +687,6 @@ def take_test(request):
 
 
 def test_results(request, session_id):
-    """Show test results"""
     if 'access_code_id' not in request.session:
         return redirect('login')
 
@@ -738,7 +709,6 @@ def test_results(request, session_id):
 
 
 def my_statistics(request):
-    """User statistics dashboard"""
     if 'access_code_id' not in request.session:
         return redirect('login')
 
@@ -782,7 +752,6 @@ def my_statistics(request):
 
 
 def practice_mode(request):
-    """Practice wrong answers"""
     if 'access_code_id' not in request.session:
         return redirect('login')
 
@@ -806,7 +775,6 @@ def practice_mode(request):
 
 
 def logout_view(request):
-    """Logout user"""
     request.session.flush()
     messages.success(request, 'You have been logged out.')
     return redirect('login')

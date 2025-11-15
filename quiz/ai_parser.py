@@ -9,7 +9,6 @@ from openai import OpenAI
 
 
 class AIQuestionParser:
-    """AI-powered question parser using OpenAI"""
 
     def __init__(self):
         self.client = None
@@ -18,8 +17,6 @@ class AIQuestionParser:
             self.client = OpenAI(api_key=api_key)
 
     def convert_office_math_to_latex(self, text: str) -> str:
-        """Convert Office Math ML to LaTeX"""
-
         def convert_matrix(match):
             matrix_content = match.group(1)
             rows = matrix_content.split('##')
@@ -43,7 +40,6 @@ class AIQuestionParser:
         return text
 
     def extract_text_from_file(self, file_path: str) -> str:
-        """Extract raw text from PDF or DOCX"""
         file_extension = os.path.splitext(file_path)[1].lower()
 
         if file_extension in ['.pdf']:
@@ -53,7 +49,6 @@ class AIQuestionParser:
         return ""
 
     def _extract_from_pdf(self, file_path: str) -> str:
-        """Extract text from PDF"""
         text = ""
         try:
             with pdfplumber.open(file_path) as pdf:
@@ -70,7 +65,6 @@ class AIQuestionParser:
         return text
 
     def _extract_from_docx(self, file_path: str) -> str:
-        """Extract text from DOCX including equations/formulas"""
         doc = docx.Document(file_path)
         full_text = []
 
@@ -96,7 +90,6 @@ class AIQuestionParser:
         return '\n'.join(full_text)
 
     def _extract_equation_from_run(self, run) -> str:
-        """Extract equation text from run"""
         try:
             xml_str = run.element.xml.decode('utf-8') if isinstance(run.element.xml, bytes) else str(run.element.xml)
 
@@ -114,7 +107,6 @@ class AIQuestionParser:
         return ""
 
     def _extract_equations_from_paragraph(self, paragraph) -> list:
-        """Extract equations from paragraph"""
         equations = []
         try:
             xml_str = paragraph._element.xml.decode('utf-8') if isinstance(paragraph._element.xml, bytes) else str(paragraph._element.xml)
@@ -131,7 +123,6 @@ class AIQuestionParser:
         return equations
 
     def parse_with_ai(self, file_path: str, answer_marking: str = None, answer_file_path: str = None) -> List[Dict]:
-        """Parse questions using OpenAI"""
         question_text = self.extract_text_from_file(file_path)
 
         answer_text = ""
@@ -144,8 +135,6 @@ class AIQuestionParser:
             return self._parse_with_regex(question_text, answer_text, answer_marking)
 
     def _parse_with_openai(self, question_text: str, answer_text: str, answer_marking: str) -> List[Dict]:
-        """Use OpenAI to parse questions"""
-
         question_text = self.convert_office_math_to_latex(question_text)
         if answer_text:
             answer_text = self.convert_office_math_to_latex(answer_text)
@@ -210,7 +199,6 @@ Return JSON in this EXACT format (must be valid JSON):
 
 Extract ALL questions now:"""
         else:
-            # Questions and answers in same file
             marker_info = ""
             if answer_marking == 'hash_start':
                 marker_info = "Correct answers are marked with # at the start"
@@ -301,15 +289,12 @@ Extract ALL questions now:"""
 
         except Exception as e:
             print(f"OpenAI parsing error: {str(e)}")
-            # Fallback to regex
             return self._parse_with_regex(question_text, answer_text, answer_marking)
 
     def _parse_with_regex(self, question_text: str, answer_text: str, answer_marking: str) -> List[Dict]:
-        """Fallback regex-based parsing"""
         questions = []
 
         if answer_text:
-            # Parse separate answer file
             questions = self._parse_questions_only(question_text)
             answers = self._parse_answers(answer_text)
             questions = self._merge_answers(questions, answers)
@@ -321,7 +306,6 @@ Extract ALL questions now:"""
         return questions
 
     def _parse_hash_format(self, text: str) -> List[Dict]:
-        """Parse # format"""
         questions = []
         blocks = text.split('++++')
 
@@ -341,7 +325,7 @@ Extract ALL questions now:"""
                 is_correct = option_text.startswith('#')
                 clean_text = option_text.lstrip('#').strip()
 
-                if clean_text:  # Only add non-empty options
+                if clean_text:
                     options.append({
                         'text': clean_text,
                         'is_correct': is_correct,
@@ -358,7 +342,6 @@ Extract ALL questions now:"""
         return questions
 
     def _parse_plus_format(self, text: str) -> List[Dict]:
-        """Parse ++++ format"""
         questions = []
         question_pattern = r'(\d+)[\.\)]\s*(.+?)(?=\d+[\.\)]|$)'
 
@@ -395,7 +378,6 @@ Extract ALL questions now:"""
         return questions
 
     def _parse_questions_only(self, text: str) -> List[Dict]:
-        """Parse questions without answers"""
         questions = []
         question_pattern = r'^\s*(\d+)[\.\)]\s+(.+?)(?=^\s*\d+[\.\)]|\Z)'
 
@@ -434,7 +416,6 @@ Extract ALL questions now:"""
         return questions
 
     def _parse_answers(self, answer_text: str) -> Dict[int, str]:
-        """Parse answer file"""
         answers = {}
         pattern = r'(\d+)[\.\)]\s*([A-Z])'
 
@@ -446,7 +427,6 @@ Extract ALL questions now:"""
         return answers
 
     def _merge_answers(self, questions: List[Dict], answers: Dict[int, str]) -> List[Dict]:
-        """Merge answers with questions"""
         for question in questions:
             question_num = question['order']
             if question_num in answers:

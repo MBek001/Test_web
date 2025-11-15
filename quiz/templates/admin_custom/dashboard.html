@@ -46,7 +46,7 @@
         <tbody>
             {% for session in recent_sessions %}
             <tr>
-                <td>{{ session.access_code.name }}</td>
+                <td>{{ session.user_name }}</td>
                 <td>{{ session.test.title }}</td>
                 <td>{{ session.score }}%</td>
                 <td>{{ session.completed_at|date:"Y-m-d H:i" }}</td>
