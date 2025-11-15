@@ -1,0 +1,74 @@
+{% extends 'admin_custom/base.html' %}
+
+{% block title %}{{ user_name }} - User Details{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h2>{{ user_name }}</h2>
+            <p style="color: #666; margin-top: 5px;">Access Code: <code>{{ access_code.code }}</code></p>
+        </div>
+        <a href="{% url 'admin_users' %}" class="btn btn-secondary">Back to Users</a>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Test Sessions</h3>
+    {% if sessions %}
+    <table style="margin-top: 20px;">
+        <thead>
+            <tr>
+                <th>Test</th>
+                <th>Mode</th>
+                <th>Score</th>
+                <th>Correct</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in sessions %}
+            <tr>
+                <td>{{ session.test.title }}</td>
+                <td>
+                    {% if session.test_mode == 'one_by_one' %}
+                        <span class="badge badge-info">One by One</span>
+                    {% else %}
+                        <span class="badge badge-warning">Batch 25</span>
+                    {% endif %}
+                </td>
+                <td><strong>{{ session.score|floatformat:1 }}%</strong></td>
+                <td>{{ session.correct_answers }}</td>
+                <td>{{ session.total_questions }}</td>
+                <td>
+                    {% if session.is_completed %}
+                        <span class="badge badge-success">Completed</span>
+                    {% else %}
+                        <span class="badge badge-warning">In Progress</span>
+                    {% endif %}
+                </td>
+                <td>{{ session.started_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                    <a href="{% url 'admin_session_detail' session.id %}" class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px;">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="margin-top: 20px; color: #999;">No test sessions found</p>
+    {% endif %}
+</div>
+
+<div class="card" style="border: 1px solid #e74c3c;">
+    <h3 style="color: #e74c3c;">Danger Zone</h3>
+    <p style="color: #666; margin-top: 10px;">Delete all sessions for this user. This action cannot be undone.</p>
+    <form method="post" onsubmit="return confirm('Are you sure you want to delete all sessions for {{ user_name }}? This cannot be undone!');" style="margin-top: 15px;">
+        {% csrf_token %}
+        <button type="submit" name="delete_user" class="btn btn-danger">Delete All User Sessions</button>
+    </form>
+</div>
+{% endblock %}

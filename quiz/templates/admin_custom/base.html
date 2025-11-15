@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Admin Panel{% endblock %}</title>
+
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background: #f5f7fa; }
@@ -42,6 +56,28 @@
         .badge-danger { background: #f8d7da; color: #721c24; }
         .badge-warning { background: #fff3cd; color: #856404; }
         .badge-info { background: #d1ecf1; color: #0c5460; }
+
+        @media (max-width: 768px) {
+            .navbar { flex-direction: column; gap: 15px; padding: 15px; }
+            .navbar h1 { font-size: 20px; }
+            .navbar div { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+            .navbar a { margin-left: 0; font-size: 13px; padding: 6px 12px; }
+            .container { padding: 0 10px; margin: 20px auto; }
+            .stats-grid { grid-template-columns: 1fr; }
+            table { font-size: 13px; }
+            table th, table td { padding: 8px; }
+            .btn { padding: 8px 16px; font-size: 13px; }
+        }
+
+        @media (max-width: 480px) {
+            .navbar h1 { font-size: 18px; }
+            .card { padding: 15px; }
+            .stat-card { padding: 20px; }
+            .stat-card h3 { font-size: 28px; }
+            table { font-size: 12px; }
+            table th, table td { padding: 6px; }
+            .form-group input, .form-group select, .form-group textarea { font-size: 13px; }
+        }
     </style>
 </head>
 <body>
@@ -51,6 +87,7 @@
             <a href="{% url 'admin_dashboard' %}">Dashboard</a>
             <a href="{% url 'admin_subjects' %}">Subjects</a>
             <a href="{% url 'admin_codes' %}">Access Codes</a>
+            <a href="{% url 'admin_users' %}">Users</a>
             <a href="{% url 'admin_results' %}">Results</a>
             <a href="{% url 'admin_logout' %}">Logout</a>
         </div>
