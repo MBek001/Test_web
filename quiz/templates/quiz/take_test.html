@@ -1,4 +1,5 @@
 {% extends 'quiz/base.html' %}
+{% load math_filters %}
 
 {% block title %}{{ session.test.title }}{% endblock %}
 
@@ -212,7 +213,7 @@
         <div class="question-list">
             <div class="question-item">
                 <div class="question-number">Savol {{ current_index|add:1 }}</div>
-                <div class="question-text">{{ question.text }}</div>
+                <div class="question-text">{{ question.text|mathformat }}</div>
 
                 <ul class="options-list">
                     {% for option in question.options.all %}
@@ -222,7 +223,7 @@
                                    name="question_{{ question.id }}"
                                    value="{{ option.id }}"
                                    required>
-                            <span>{{ option.text }}</span>
+                            <span>{{ option.text|mathformat }}</span>
                         </label>
                     </li>
                     {% endfor %}
@@ -251,7 +252,7 @@
             {% for question in questions %}
             <div class="question-item" id="question-{{ question.id }}">
                 <div class="question-number">Savol {{ question.order }}</div>
-                <div class="question-text">{{ question.text }}</div>
+                <div class="question-text">{{ question.text|mathformat }}</div>
 
                 <ul class="options-list">
                     {% for option in question.options.all %}
@@ -261,7 +262,7 @@
                                    name="question_{{ question.id }}"
                                    value="{{ option.id }}"
                                    {% if option.id in answered_ids %}checked{% endif %}>
-                            <span>{{ option.text }}</span>
+                            <span>{{ option.text|mathformat }}</span>
                         </label>
                     </li>
                     {% endfor %}
