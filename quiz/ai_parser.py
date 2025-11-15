@@ -159,15 +159,21 @@ QUESTION TEXT:
 ANSWER KEY (format like: 1. B, 2. C, 3. D, etc.):
 {answer_text}
 
+CRITICAL FORMAT UNDERSTANDING:
+- Questions are numbered: "1. Question text here?" or "1) Question text here?"
+- Options are lettered: "A) Option text", "B) Option text", "C) Option text", "D) Option text"
+- DO NOT confuse option letters (A, B, C, D) with question numbers
+- Each question has 4 options (A, B, C, D) - extract ALL of them
+
 CRITICAL INSTRUCTIONS:
 1. Extract EVERY SINGLE question (all 100 questions if there are 100)
-2. For each question, extract ALL options (A, B, C, D, etc.)
-3. Match the answer key to mark which option is correct
-4. Question number in answer key corresponds to question order
-5. Ensure question text is COMPLETE - don't cut off
-6. Ensure ALL options are included
-7. PRESERVE [FORMULA] markers and mathematical expressions EXACTLY as they appear
-8. If you see mathematical notation, matrix notation, or equations, keep them in the text
+2. For each question, extract the FULL question text (everything after "1." until the first option "A)")
+3. Extract ALL 4 options (A, B, C, D) for each question
+4. Match the answer key to mark which option is correct
+5. Question number in answer key corresponds to question order
+6. Ensure question text is COMPLETE - include everything between question number and first option
+7. Remove the letter prefix (A), B), C), D)) from option text
+8. PRESERVE [FORMULA] markers and mathematical expressions EXACTLY
 9. Return ONLY valid JSON, no markdown formatting
 
 IMPORTANT: Mathematical formulas may appear as [FORMULA] or as text like "matrix", "A=", numbers, etc.
@@ -218,16 +224,21 @@ TEXT:
 
 ANSWER MARKING: {marker_info}
 
+CRITICAL FORMAT UNDERSTANDING:
+- Questions are numbered: "1. Question text here?" or "1) Question text here?"
+- Options are lettered: "A) Option text", "B) Option text", "C) Option text", "D) Option text"
+- DO NOT confuse option letters (A, B, C, D) with question numbers
+- Each question has 4 options - extract ALL of them
+
 CRITICAL INSTRUCTIONS:
 1. Extract EVERY SINGLE question - don't skip any
-2. Extract ALL options for each question (A, B, C, D, etc.)
-3. Identify correct answers by the markers (# at start or + at end)
-4. Ensure question text is COMPLETE
-5. Ensure ALL options are included
-6. Remove markers (# or +) from the option text
-7. PRESERVE [FORMULA] markers and mathematical expressions EXACTLY as they appear
-8. If you see mathematical notation, matrix notation, or equations, keep them in the text
-9. Return ONLY valid JSON, no markdown formatting
+2. For each question, extract the FULL question text (everything after "1." until the first option "A)")
+3. Extract ALL 4 options (A, B, C, D) for each question
+4. Identify correct answers by the markers (# at start or + at end)
+5. Ensure question text is COMPLETE - include everything between question number and first option
+6. Remove the letter prefix (A), B), C), D)) and markers (# or +) from option text
+7. PRESERVE [FORMULA] markers and mathematical expressions EXACTLY
+8. Return ONLY valid JSON, no markdown formatting
 
 IMPORTANT: Mathematical formulas may appear as [FORMULA] or as text like "matrix", "A=", numbers, etc.
 Keep ALL mathematical content in the question and option text.
@@ -386,19 +397,22 @@ Extract ALL questions now:"""
     def _parse_questions_only(self, text: str) -> List[Dict]:
         """Parse questions without answers"""
         questions = []
-        question_pattern = r'(\d+)[\.\)]\s*(.+?)(?=\d+[\.\)]|$)'
+        question_pattern = r'^\s*(\d+)[\.\)]\s+(.+?)(?=^\s*\d+[\.\)]|\Z)'
 
-        for match in re.finditer(question_pattern, text, re.DOTALL):
+        for match in re.finditer(question_pattern, text, re.DOTALL | re.MULTILINE):
             question_num = int(match.group(1))
             question_block = match.group(2).strip()
 
-            lines = question_block.split('\n')
-            question_text = lines[0].strip()
+            option_pattern = r'^([A-Z])\)\s*(.+?)(?=^[A-Z]\)|\Z)'
+            option_matches = list(re.finditer(option_pattern, question_block, re.DOTALL | re.MULTILINE))
 
-            option_pattern = r'([A-Z])[\.\)]\s*(.+?)(?=[A-Z][\.\)]|$)'
+            if option_matches:
+                question_text = question_block[:question_block.find(option_matches[0].group(0))].strip()
+            else:
+                question_text = question_block.strip()
+
             options = []
-
-            for opt_match in re.finditer(option_pattern, question_block, re.DOTALL):
+            for opt_match in option_matches:
                 letter = opt_match.group(1)
                 option_text = opt_match.group(2).strip().lstrip('○').strip()
 

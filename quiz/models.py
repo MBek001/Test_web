@@ -174,3 +174,18 @@ class UserAnswer(models.Model):
 
     class Meta:
         ordering = ['question__order']
+
+
+class UserLogin(models.Model):
+    """Track user logins"""
+    access_code = models.ForeignKey(AccessCode, on_delete=models.CASCADE, related_name='logins')
+    user_name = models.CharField(max_length=200)
+    login_at = models.DateTimeField(auto_now_add=True)
+    last_activity = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user_name} - {self.access_code.code}"
+
+    class Meta:
+        ordering = ['-last_activity']
+        unique_together = ['access_code', 'user_name']
