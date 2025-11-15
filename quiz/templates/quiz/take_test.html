@@ -282,6 +282,19 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+    if (window.innerWidth <= 768) {
+        window.addEventListener('load', function() {
+            const firstQuestion = document.querySelector('.question-item');
+            if (firstQuestion) {
+                setTimeout(function() {
+                    firstQuestion.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 300);
+            }
+        });
+    }
+</script>
+
 {% if time_remaining is not None and mode == 'batch_25' %}
 <script>
     let totalSeconds = {{ time_remaining|floatformat:0 }} * 60;

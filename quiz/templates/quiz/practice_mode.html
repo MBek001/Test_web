@@ -38,7 +38,7 @@
             {% for option in question.options.all %}
             <div class="option-item">
                 <div class="option-label {% if option.is_correct %}correct{% endif %}">
-                    <div class="option-letter">{{ forloop.counter0|add:65|chr }})</div>
+                    <div class="option-letter">{% if forloop.counter == 1 %}A{% elif forloop.counter == 2 %}B{% elif forloop.counter == 3 %}C{% elif forloop.counter == 4 %}D{% elif forloop.counter == 5 %}E{% endif %})</div>
                     <div style="flex: 1;">
                         {{ option.text }}
                         {% if option.is_correct %}

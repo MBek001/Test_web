@@ -6,12 +6,10 @@ import string
 
 
 def generate_unique_code():
-    """Generate a unique 8-character code"""
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
 
 
 class Subject(models.Model):
-    """Subject/Category for tests"""
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -24,7 +22,6 @@ class Subject(models.Model):
 
 
 class Test(models.Model):
-    """Test model with file upload support"""
     ANSWER_MARKING_CHOICES = [
         ('hash_start', '# at start of correct answer'),
         ('plus_end', '+ or ++++ at end of correct answer'),
@@ -35,18 +32,14 @@ class Test(models.Model):
     title = models.CharField(max_length=300)
     description = models.TextField(blank=True)
 
-    # File uploads
     question_file = models.FileField(upload_to='test_files/', help_text='Upload PDF/DOCX with questions')
     answer_file = models.FileField(upload_to='test_files/', blank=True, null=True, help_text='Upload if answers are in separate file')
 
-    # Answer marking pattern
     answer_marking = models.CharField(max_length=20, choices=ANSWER_MARKING_CHOICES, default='hash_start')
 
-    # Status
     is_published = models.BooleanField(default=False, help_text='Make test available to users')
     is_parsed = models.BooleanField(default=False, help_text='File has been parsed successfully')
 
-    # Settings
     time_limit = models.IntegerField(default=60, help_text='Time limit in minutes (0 for no limit)')
     passing_score = models.IntegerField(default=70, help_text='Passing score percentage')
 
@@ -61,7 +54,6 @@ class Test(models.Model):
 
 
 class Question(models.Model):
-    """Question model"""
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='questions')
     text = models.TextField(help_text='Question text')
     order = models.IntegerField(default=0)
@@ -76,7 +68,6 @@ class Question(models.Model):
 
 
 class Option(models.Model):
-    """Answer option for a question"""
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='options')
     text = models.TextField(help_text='Option text')
     is_correct = models.BooleanField(default=False)
@@ -90,15 +81,12 @@ class Option(models.Model):
 
 
 class AccessCode(models.Model):
-    """Unique access codes for users - ONE CODE FOR MANY USERS"""
     code = models.CharField(max_length=20, unique=True, default=generate_unique_code)
 
-    # Restrictions
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, null=True, blank=True, help_text='Limit to specific subject (optional)')
     max_attempts_per_user = models.IntegerField(default=0, help_text='Maximum test attempts per user (0 for unlimited)')
     expires_at = models.DateTimeField(null=True, blank=True, help_text='Expiration date (optional)')
 
-    # Status
     is_active = models.BooleanField(default=True)
     first_used_at = models.DateTimeField(null=True, blank=True)
 
@@ -110,7 +98,6 @@ class AccessCode(models.Model):
         return f"{self.code} - {user_count} user(s)"
 
     def is_valid(self):
-        """Check if code is still valid"""
         if not self.is_active:
             return False
         if self.expires_at and timezone.now() > self.expires_at:
@@ -118,7 +105,6 @@ class AccessCode(models.Model):
         return True
 
     def get_users(self):
-        """Get list of users who used this code"""
         return self.sessions.values_list('user_name', flat=True).distinct()
 
     class Meta:
@@ -126,10 +112,9 @@ class AccessCode(models.Model):
 
 
 class TestSession(models.Model):
-    """Track user test sessions - SUPPORTS MULTIPLE USERS PER CODE"""
     TEST_MODE_CHOICES = [
-        ('one_by_one', 'Birma-bir (istalgan vaqtda yakunlash)'),  # One by one (finish anytime)
-        ('batch_25', '25 ta savol (hammasi birdan)')  # 25 questions at once
+        ('one_by_one', 'Birma-bir (istalgan vaqtda yakunlash)'),
+        ('batch_25', '25 ta savol (hammasi birdan)')
     ]
 
     access_code = models.ForeignKey(AccessCode, on_delete=models.CASCADE, related_name='sessions')
@@ -137,12 +122,10 @@ class TestSession(models.Model):
     user_name = models.CharField(max_length=200, default='Unknown User', help_text='Name of the user taking this test')
     test_mode = models.CharField(max_length=20, choices=TEST_MODE_CHOICES, default='batch_25')
 
-    # Session info
     started_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     is_completed = models.BooleanField(default=False)
 
-    # Results
     score = models.FloatField(default=0.0)
     total_questions = models.IntegerField(default=0)
     correct_answers = models.IntegerField(default=0)
@@ -151,7 +134,6 @@ class TestSession(models.Model):
         return f"{self.user_name} - {self.test.title} ({self.score}%)"
 
     def calculate_score(self):
-        """Calculate test score"""
         if self.total_questions == 0:
             return 0.0
         return round((self.correct_answers / self.total_questions) * 100, 2)
@@ -161,7 +143,6 @@ class TestSession(models.Model):
 
 
 class UserAnswer(models.Model):
-    """Store user's answers"""
     session = models.ForeignKey(TestSession, on_delete=models.CASCADE, related_name='answers')
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     selected_option = models.ForeignKey(Option, on_delete=models.CASCADE, null=True, blank=True)
@@ -177,7 +158,6 @@ class UserAnswer(models.Model):
 
 
 class UserLogin(models.Model):
-    """Track user logins"""
     access_code = models.ForeignKey(AccessCode, on_delete=models.CASCADE, related_name='logins')
     user_name = models.CharField(max_length=200)
     login_at = models.DateTimeField(auto_now_add=True)
