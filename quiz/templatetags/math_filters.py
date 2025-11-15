@@ -22,17 +22,77 @@ def mathformat(text):
             text = f"${text}$"
         return mark_safe(text)
 
+    # Pattern for matrix: A=241-13-2323 (variable = concatenated numbers)
+    # This matches patterns like A=<digits and minuses>
+    matrix_pattern = r'\b([A-Z]\d*)\s*=\s*([0-9\-]{6,})\b'
+
+    def convert_to_matrix(match):
+        var_name = match.group(1)
+        numbers_str = match.group(2)
+
+        # Parse concatenated numbers (assuming single digits with optional minus)
+        numbers = []
+        i = 0
+        while i < len(numbers_str):
+            if numbers_str[i] == '-':
+                if i + 1 < len(numbers_str):
+                    numbers.append(-int(numbers_str[i + 1]))
+                    i += 2
+                else:
+                    i += 1
+            else:
+                numbers.append(int(numbers_str[i]))
+                i += 1
+
+        # Determine matrix dimensions (try to make it square)
+        n = len(numbers)
+        if n == 4:
+            rows, cols = 2, 2
+        elif n == 9:
+            rows, cols = 3, 3
+        elif n == 16:
+            rows, cols = 4, 4
+        elif n == 6:
+            rows, cols = 2, 3
+        elif n == 8:
+            rows, cols = 2, 4
+        else:
+            # Default to trying square root
+            import math
+            sqrt_n = int(math.sqrt(n))
+            if sqrt_n * sqrt_n == n:
+                rows, cols = sqrt_n, sqrt_n
+            else:
+                # Can't determine, return original
+                return match.group(0)
+
+        # Build matrix
+        matrix_rows = []
+        for i in range(rows):
+            row = []
+            for j in range(cols):
+                idx = i * cols + j
+                if idx < len(numbers):
+                    row.append(str(numbers[idx]))
+            matrix_rows.append(' & '.join(row))
+
+        matrix_content = ' \\\\ '.join(matrix_rows)
+        return f"${var_name} = \\begin{{bmatrix}} {matrix_content} \\end{{bmatrix}}$"
+
+    text = re.sub(matrix_pattern, convert_to_matrix, text)
+
     # Pattern for matrix variables: A32, A23, etc (subscript notation)
     text = re.sub(r'\b([A-Z])(\d{2})\b', r'$\1_{\2}$', text)
 
     # Pattern for simple variable subscripts: A1, A2, etc
     text = re.sub(r'\b([A-Z])(\d)\b(?!\d)', r'$\1_{\2}$', text)
 
-    # Pattern for equations: A = something
-    text = re.sub(r'\b([A-Z])\s*=\s*', r'$\1 = $', text)
+    # Pattern for simple equations: A = (but not already processed)
+    text = re.sub(r'\b([A-Z])\s*=\s*(?![\\$])', r'$\1 = $', text)
 
     # Clean up consecutive $ symbols
     text = re.sub(r'\$\s*\$', '', text)
+    text = re.sub(r'\$\s*\$', '', text)  # Run twice to catch any remaining
 
     # If we made changes, mark as safe HTML
     if text != original_text:
