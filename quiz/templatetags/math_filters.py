@@ -22,10 +22,8 @@ def mathformat(text):
             text = f"${text}$"
         return mark_safe(text)
 
-    # First, handle matrix patterns (must come before subscript conversion)
-    # Pattern: Letter optionally followed by digits, then =, then 6+ digits/minuses
-    # Removed word boundary to handle cases like A23A=...
-    matrix_pattern = r'([A-Z]\d*)\s*=\s*([0-9\-]{6,})(?=\s|$|[^0-9\-])'
+    # Enhanced Matrix Pattern
+    matrix_pattern = r'([A-Z]\d*)\s*=\s*([0-9\-]{4,})(?=\s|$|[^0-9\-])'
 
     def convert_to_matrix(match):
         var_name = match.group(1)
@@ -45,31 +43,9 @@ def mathformat(text):
                 numbers.append(int(numbers_str[i]))
                 i += 1
 
-        # Determine matrix dimensions (try to make it square)
-        n = len(numbers)
-        if n == 4:
-            rows, cols = 2, 2
-        elif n == 9:
-            rows, cols = 3, 3
-        elif n == 16:
-            rows, cols = 4, 4
-        elif n == 6:
-            rows, cols = 2, 3
-        elif n == 8:
-            rows, cols = 2, 4
-        elif n == 12:
-            rows, cols = 3, 4
-        else:
-            # Default to trying square root
-            import math
-            sqrt_n = int(math.sqrt(n))
-            if sqrt_n * sqrt_n == n:
-                rows, cols = sqrt_n, sqrt_n
-            else:
-                # Can't determine, return original
-                return match.group(0)
-
-        # Build matrix
+        # Calculate rows and columns dynamically
+        rows = int(len(numbers) ** 0.5)
+        cols = len(numbers) // rows
         matrix_rows = []
         for i in range(rows):
             row = []
@@ -85,7 +61,6 @@ def mathformat(text):
     text = re.sub(matrix_pattern, convert_to_matrix, text)
 
     # Pattern for matrix variables with subscripts: A32, A23, etc
-    # Only convert if not already part of a matrix pattern (not followed by =)
     text = re.sub(r'(?<!\$)([A-Z])(\d{2})(?!\s*=)', r'$\1_{\2}$', text)
 
     # Pattern for simple variable subscripts: A1, A2, etc
@@ -101,4 +76,3 @@ def mathformat(text):
         return mark_safe(text)
 
     return text
-
