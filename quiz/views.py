@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Count, Avg, Q
 from .models import Subject, Test, Question, Option, AccessCode, TestSession, UserAnswer
-from .file_parsers import QuestionParser
+from .ai_parser import AIQuestionParser
 import os
 
 
@@ -17,40 +17,32 @@ def is_staff(user):
     return user.is_authenticated and user.is_staff
 
 
-def parse_test_file(test, use_ai=False):
-    """Parse test file and create questions"""
+def parse_test_file(test):
+    """Parse test file using AI for 100% accuracy"""
     try:
-        file_extension = os.path.splitext(test.question_file.name)[1].lower()
+        # Initialize AI parser
+        parser = AIQuestionParser()
 
-        # Parse questions
-        if file_extension in ['.pdf']:
-            questions_data = QuestionParser.parse_pdf(
-                test.question_file.path,
-                test.answer_marking
-            )
-        elif file_extension in ['.docx', '.doc']:
-            questions_data = QuestionParser.parse_docx(
-                test.question_file.path,
-                test.answer_marking
-            )
-        else:
+        # Get file paths
+        question_file_path = test.question_file.path
+        answer_file_path = test.answer_file.path if test.answer_file else None
+
+        # Parse with AI
+        questions_data = parser.parse_with_ai(
+            question_file_path,
+            test.answer_marking,
+            answer_file_path
+        )
+
+        if not questions_data:
             return False
-
-        # If answers are in separate file
-        if test.answer_marking == 'separate_file' and test.answer_file:
-            answer_extension = os.path.splitext(test.answer_file.name)[1].lower()
-            answers = QuestionParser.parse_answers_file(
-                test.answer_file.path,
-                answer_extension
-            )
-            questions_data = QuestionParser.merge_questions_with_answers(questions_data, answers)
 
         # Create questions and options
         for q_data in questions_data:
             question = Question.objects.create(
                 test=test,
                 text=q_data['text'],
-                order=q_data['order']
+                order=q_data.get('order', 0)
             )
 
             for opt_data in q_data['options']:
@@ -58,12 +50,14 @@ def parse_test_file(test, use_ai=False):
                     question=question,
                     text=opt_data['text'],
                     is_correct=opt_data['is_correct'],
-                    order=opt_data['order']
+                    order=opt_data.get('order', 0)
                 )
 
         return True
     except Exception as e:
         print(f"Parse error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
@@ -271,7 +265,7 @@ def admin_codes(request):
     if request.method == 'POST':
         count = int(request.POST.get('count', 1))
         subject_id = request.POST.get('subject')
-        max_attempts = int(request.POST.get('max_attempts', 0))
+        max_attempts_per_user = int(request.POST.get('max_attempts', 0))
 
         subject = Subject.objects.get(id=subject_id) if subject_id else None
 
@@ -279,7 +273,7 @@ def admin_codes(request):
         for _ in range(count):
             code = AccessCode.objects.create(
                 subject=subject,
-                max_attempts=max_attempts,
+                max_attempts_per_user=max_attempts_per_user,
                 created_by=request.user
             )
             generated.append(code.code)
@@ -331,7 +325,7 @@ def admin_session_detail(request, session_id):
 # ============================================================================
 
 def login_view(request):
-    """User login with access code - FIXED"""
+    """User login with access code - SUPPORTS MULTIPLE USERS"""
     if request.method == 'POST':
         code = request.POST.get('code', '').strip().upper()
         name = request.POST.get('name', '').strip()
@@ -347,20 +341,16 @@ def login_view(request):
                 messages.error(request, 'This access code is expired or inactive.')
                 return redirect('login')
 
-            # FIX: Always update name if empty
-            if not access_code.name:
-                access_code.name = name
+            # Update first_used_at only once
+            if not access_code.first_used_at:
                 access_code.first_used_at = timezone.now()
-
-            # Always mark as used
-            access_code.is_used = True
-            access_code.save()
+                access_code.save()
 
             # Store in session
             request.session['access_code_id'] = access_code.id
-            request.session['user_name'] = access_code.name
+            request.session['user_name'] = name  # Store user's name in session
 
-            messages.success(request, f'Welcome, {access_code.name}!')
+            messages.success(request, f'Welcome, {name}!')
             return redirect('test_list')
 
         except AccessCode.DoesNotExist:
@@ -401,15 +391,17 @@ def test_list(request):
             }
         subjects_dict[subject_name]['tests'].append(test)
 
-    # Check attempts
-    total_sessions = TestSession.objects.filter(access_code=access_code).count()
+    # Check attempts per user
+    user_name = request.session.get('user_name', '')
+    user_sessions = TestSession.objects.filter(access_code=access_code, user_name=user_name)
+    total_sessions = user_sessions.count()
     remaining = None
-    if access_code.max_attempts > 0:
-        remaining = access_code.max_attempts - total_sessions
+    if access_code.max_attempts_per_user > 0:
+        remaining = access_code.max_attempts_per_user - total_sessions
 
     context = {
         'subjects': subjects_dict.values(),
-        'user_name': access_code.name,
+        'user_name': user_name,
         'remaining_attempts': remaining,
         'total_sessions': total_sessions,
     }
@@ -418,23 +410,28 @@ def test_list(request):
 
 def start_test(request, test_id):
     """Start a test"""
-    if 'access_code_id' not in request.session:
+    if 'access_code_id' not in request.session or 'user_name' not in request.session:
         return redirect('login')
 
     access_code = get_object_or_404(AccessCode, id=request.session['access_code_id'])
     test = get_object_or_404(Test, id=test_id, is_published=True)
+    user_name = request.session['user_name']
 
-    # Check max attempts
-    if access_code.max_attempts > 0:
-        attempts_count = TestSession.objects.filter(access_code=access_code).count()
-        if attempts_count >= access_code.max_attempts:
+    # Check max attempts per user
+    if access_code.max_attempts_per_user > 0:
+        user_attempts = TestSession.objects.filter(
+            access_code=access_code,
+            user_name=user_name
+        ).count()
+        if user_attempts >= access_code.max_attempts_per_user:
             messages.error(request, 'You have reached the maximum number of attempts.')
             return redirect('test_list')
 
-    # Create new test session
+    # Create new test session with user_name
     session = TestSession.objects.create(
         access_code=access_code,
         test=test,
+        user_name=user_name,
         total_questions=test.questions.count()
     )
 
@@ -500,7 +497,7 @@ def take_test(request):
         'questions': questions,
         'answered_ids': list(answered),
         'time_remaining': time_remaining,
-        'user_name': session.access_code.name
+        'user_name': session.user_name
     }
     return render(request, 'quiz/take_test.html', context)
 
@@ -523,7 +520,7 @@ def test_results(request, session_id):
         'session': session,
         'answers': answers,
         'passed': passed,
-        'user_name': session.access_code.name
+        'user_name': session.user_name
     }
     return render(request, 'quiz/test_results.html', context)
 

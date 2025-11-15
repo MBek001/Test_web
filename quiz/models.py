@@ -90,25 +90,24 @@ class Option(models.Model):
 
 
 class AccessCode(models.Model):
-    """Unique access codes for users"""
+    """Unique access codes for users - ONE CODE FOR MANY USERS"""
     code = models.CharField(max_length=20, unique=True, default=generate_unique_code)
-    name = models.CharField(max_length=200, blank=True, help_text='User name (filled when code is used)')
 
     # Restrictions
     subject = models.ForeignKey(Subject, on_delete=models.CASCADE, null=True, blank=True, help_text='Limit to specific subject (optional)')
-    max_attempts = models.IntegerField(default=0, help_text='Maximum test attempts (0 for unlimited)')
+    max_attempts_per_user = models.IntegerField(default=0, help_text='Maximum test attempts per user (0 for unlimited)')
     expires_at = models.DateTimeField(null=True, blank=True, help_text='Expiration date (optional)')
 
     # Status
     is_active = models.BooleanField(default=True)
-    is_used = models.BooleanField(default=False)
     first_used_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
     def __str__(self):
-        return f"{self.code} - {self.name if self.name else 'Unused'}"
+        user_count = self.sessions.values('user_name').distinct().count()
+        return f"{self.code} - {user_count} user(s)"
 
     def is_valid(self):
         """Check if code is still valid"""
@@ -118,14 +117,19 @@ class AccessCode(models.Model):
             return False
         return True
 
+    def get_users(self):
+        """Get list of users who used this code"""
+        return self.sessions.values_list('user_name', flat=True).distinct()
+
     class Meta:
         ordering = ['-created_at']
 
 
 class TestSession(models.Model):
-    """Track user test sessions"""
+    """Track user test sessions - SUPPORTS MULTIPLE USERS PER CODE"""
     access_code = models.ForeignKey(AccessCode, on_delete=models.CASCADE, related_name='sessions')
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='sessions')
+    user_name = models.CharField(max_length=200, default='Unknown User', help_text='Name of the user taking this test')
 
     # Session info
     started_at = models.DateTimeField(auto_now_add=True)
@@ -138,7 +142,7 @@ class TestSession(models.Model):
     correct_answers = models.IntegerField(default=0)
 
     def __str__(self):
-        return f"{self.access_code.name} - {self.test.title} ({self.score}%)"
+        return f"{self.user_name} - {self.test.title} ({self.score}%)"
 
     def calculate_score(self):
         """Calculate test score"""
@@ -160,7 +164,7 @@ class UserAnswer(models.Model):
     answered_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.session.access_code.name} - Q{self.question.order}"
+        return f"{self.session.user_name} - Q{self.question.order}"
 
     class Meta:
         ordering = ['question__order']

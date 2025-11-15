@@ -178,28 +178,32 @@ class OptionAdmin(admin.ModelAdmin):
 
 @admin.register(AccessCode)
 class AccessCodeAdmin(admin.ModelAdmin):
-    list_display = ['code', 'name', 'subject', 'is_active', 'is_used', 'usage_count', 'created_at']
-    list_filter = ['is_active', 'is_used', 'subject']
-    search_fields = ['code', 'name']
-    readonly_fields = ['code', 'is_used', 'first_used_at', 'created_at']
+    list_display = ['code', 'user_count', 'subject', 'is_active', 'usage_count', 'created_at']
+    list_filter = ['is_active', 'subject']
+    search_fields = ['code']
+    readonly_fields = ['code', 'first_used_at', 'created_at']
 
     actions = ['generate_codes', 'deactivate_codes']
 
     fieldsets = (
         ('Code Information', {
-            'fields': ('code', 'name')
+            'fields': ('code',)
         }),
         ('Restrictions', {
-            'fields': ('subject', 'max_attempts', 'expires_at')
+            'fields': ('subject', 'max_attempts_per_user', 'expires_at')
         }),
         ('Status', {
-            'fields': ('is_active', 'is_used', 'first_used_at', 'created_at')
+            'fields': ('is_active', 'first_used_at', 'created_at')
         }),
     )
 
+    def user_count(self, obj):
+        return obj.sessions.values('user_name').distinct().count()
+    user_count.short_description = 'Users'
+
     def usage_count(self, obj):
         return obj.sessions.count()
-    usage_count.short_description = 'Tests Taken'
+    usage_count.short_description = 'Total Sessions'
 
     def generate_codes(self, request, queryset):
         """Generate new access codes"""
@@ -257,14 +261,10 @@ class AccessCodeAdmin(admin.ModelAdmin):
 
 @admin.register(TestSession)
 class TestSessionAdmin(admin.ModelAdmin):
-    list_display = ['user_name', 'test', 'score', 'correct_answers', 'total_questions', 'is_completed', 'started_at']
+    list_display = ['user_name', 'access_code', 'test', 'score', 'correct_answers', 'total_questions', 'is_completed', 'started_at']
     list_filter = ['is_completed', 'test__subject', 'test']
-    search_fields = ['access_code__name', 'access_code__code']
-    readonly_fields = ['access_code', 'test', 'started_at', 'completed_at', 'score', 'correct_answers', 'total_questions']
-
-    def user_name(self, obj):
-        return obj.access_code.name
-    user_name.short_description = 'User'
+    search_fields = ['user_name', 'access_code__code']
+    readonly_fields = ['access_code', 'test', 'user_name', 'started_at', 'completed_at', 'score', 'correct_answers', 'total_questions']
 
     def has_add_permission(self, request):
         return False
@@ -272,14 +272,14 @@ class TestSessionAdmin(admin.ModelAdmin):
 
 @admin.register(UserAnswer)
 class UserAnswerAdmin(admin.ModelAdmin):
-    list_display = ['user_name', 'question_text', 'selected_option', 'is_correct', 'answered_at']
+    list_display = ['get_user_name', 'question_text', 'selected_option', 'is_correct', 'answered_at']
     list_filter = ['is_correct', 'session__test']
-    search_fields = ['session__access_code__name']
+    search_fields = ['session__user_name']
     readonly_fields = ['session', 'question', 'selected_option', 'is_correct', 'answered_at']
 
-    def user_name(self, obj):
-        return obj.session.access_code.name
-    user_name.short_description = 'User'
+    def get_user_name(self, obj):
+        return obj.session.user_name
+    get_user_name.short_description = 'User'
 
     def question_text(self, obj):
         return obj.question.text[:50] + '...' if len(obj.question.text) > 50 else obj.question.text

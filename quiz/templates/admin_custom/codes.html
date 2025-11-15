@@ -24,7 +24,7 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Max Attempts (0=unlimited)</label>
+                <label>Max Attempts Per User (0=unlimited)</label>
                 <input type="number" name="max_attempts" value="0" min="0">
             </div>
         </div>
@@ -39,9 +39,9 @@
         <thead>
             <tr>
                 <th>Code</th>
-                <th>User Name</th>
+                <th>Users</th>
                 <th>Subject</th>
-                <th>Tests Taken</th>
+                <th>Total Sessions</th>
                 <th>Status</th>
                 <th>Created</th>
             </tr>
@@ -50,7 +50,15 @@
             {% for code in codes %}
             <tr>
                 <td><strong>{{ code.code }}</strong></td>
-                <td>{{ code.name|default:"Not used yet" }}</td>
+                <td>
+                    {% with code.get_users as users %}
+                    {% if users %}
+                        {{ users|length }} user(s)
+                    {% else %}
+                        Not used yet
+                    {% endif %}
+                    {% endwith %}
+                </td>
                 <td>{{ code.subject|default:"All subjects" }}</td>
                 <td>{{ code.session_count }}</td>
                 <td>
