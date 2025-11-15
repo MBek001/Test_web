@@ -1,153 +1,133 @@
 # Quiz Platform - Online Training & Testing System
 
-A Django-based quiz platform that allows administrators to upload test files in various formats (PDF, DOCX) and users to take tests using unique access codes.
+A Django-based quiz platform with a custom admin panel for managing tests and tracking user progress.
 
 ## Features
 
-### For Administrators
-- Upload test files in PDF or DOCX format
-- Flexible answer marking support:
-  - `#` at the start of correct answer
-  - `+` or `++++` at the end of correct answer
-  - Separate answer file (1.A, 2.B format)
-- Parse files automatically to extract questions and answers
-- Publish/unpublish tests
-- Generate unique access codes for users
-- Track user progress and results
-- Subject/category management
+### Custom Admin Panel
+- Intuitive admin interface (no Django admin)
+- Dashboard with statistics
+- One-click test file upload and parsing
+- Subject and test management
+- Access code generation
+- Detailed results tracking
 
 ### For Users
-- Login with unique access code
-- Select subject and test
-- Take tests with optional time limits
-- Save progress while taking test
-- View detailed results with correct answers
-- Track attempts and scores
+- Simple login with access code
+- Clean test selection interface
+- Timer support
+- Progress saving
+- Detailed results with correct answers
 
-## Installation
+## Quick Start
 
-### 1. Install Python Dependencies
+### 1. Installation
 
 ```bash
+# Install dependencies
 pip install -r requirements.txt
-```
 
-### 2. Run Database Migrations
-
-```bash
-python manage.py makemigrations
+# Setup database
 python manage.py migrate
-```
 
-### 3. Create Admin User
-
-```bash
+# Create admin account
 python manage.py createsuperuser
-```
 
-Follow the prompts to create an admin account.
-
-### 4. Run Development Server
-
-```bash
+# Run server
 python manage.py runserver
 ```
 
-The application will be available at `http://127.0.0.1:8000/`
+### 2. Access the Platform
 
-## Usage Guide
+- **Admin Panel**: `http://127.0.0.1:8000/admin-panel/login/`
+- **User Login**: `http://127.0.0.1:8000/`
 
-### Admin Panel Access
+## Admin Workflow (Simple!)
 
-1. Navigate to `http://127.0.0.1:8000/admin/`
-2. Login with your admin credentials
+### Step 1: Create a Subject
+1. Login to admin panel
+2. Click "Create New Subject"
+3. Enter subject name (e.g., "Python Programming")
+4. Save
 
-### Setting Up Tests
-
-#### Step 1: Create Subjects
-
-1. Go to **Quiz** → **Subjects**
-2. Click **Add Subject**
-3. Enter subject name and description
-4. Click **Save**
-
-#### Step 2: Upload Test Files
-
-1. Go to **Quiz** → **Tests**
-2. Click **Add Test**
+### Step 2: Upload Test File
+1. Click on the subject you created
+2. Click "Upload Test"
 3. Fill in the form:
-   - **Subject**: Select the subject
    - **Title**: Test name
-   - **Description**: Optional test description
-   - **Question File**: Upload PDF or DOCX file with questions
-   - **Answer File**: Upload if answers are in a separate file
-   - **Answer Marking**: Select how correct answers are marked in your file:
-     - `# at start of correct answer` - For DOCX files with # marking
-     - `+ or ++++ at end of correct answer` - For files with + marking
-     - `Answers in separate file` - For separate answer files
+   - **Question File**: Upload PDF or DOCX
+   - **Answer Marking**: Choose how correct answers are marked:
+     - `# at start` - For files like: `#Correct answer`
+     - `+++ at end` - For files like: `Correct answer ++++`
+     - `Separate file` - Upload answer file separately
+   - **Answer File**: Only if you selected "Separate file"
    - **Time Limit**: Minutes (0 for no limit)
    - **Passing Score**: Percentage required to pass
-4. Click **Save**
+4. Click "Upload & Parse Test"
 
-#### Step 3: Parse Test Files
+The system will automatically:
+- Parse the file
+- Extract all questions and options
+- Mark correct answers
+- Show you the results
 
-1. Go to **Quiz** → **Tests**
-2. Select the test(s) you just created
-3. From the "Actions" dropdown, select **Parse selected test files**
-4. Click **Go**
-5. Check for success messages
+### Step 3: Review Questions
+- You'll see all parsed questions
+- Verify they look correct
+- If needed, click "Reparse File" to try again
 
-#### Step 4: Publish Tests
+### Step 4: Publish Test
+- Click "Publish" button
+- Test is now available to users
 
-1. Select the parsed test(s)
-2. From the "Actions" dropdown, select **Publish selected tests**
-3. Click **Go**
+### Step 5: Generate Access Codes
+1. Go to "Access Codes" in menu
+2. Enter number of codes to generate
+3. Optionally restrict to a subject
+4. Click "Generate Codes"
+5. Share codes with users
 
-#### Step 5: Generate Access Codes
+### Step 6: View Results
+- Click "Results" in menu
+- See all user sessions
+- Click "View Details" to see individual answers
 
-1. Go to **Quiz** → **Access codes**
-2. Click **Generate Codes** button (or use the action)
-3. Enter:
-   - Number of codes to generate
-   - Subject restriction (optional)
-4. Click **Generate Codes**
-5. The generated codes will appear in the list
-6. Share these codes with users
-
-### User Flow
-
-1. Navigate to `http://127.0.0.1:8000/`
-2. Enter access code and name
-3. Select subject
-4. Select test to take
-5. Answer questions
-6. Submit test
-7. View results
-
-## File Format Examples
+## Supported File Formats
 
 ### Format 1: DOCX with # marking
-
 ```
-Question text here?
+Question text?
 ====
-Wrong answer
+Wrong option
 ====
-#Correct answer
+#Correct option
 ====
-Wrong answer
+Wrong option
+====
+++++
+
+Next question?
+====
+#Correct
+====
+Wrong
 ====
 ++++
 ```
 
 ### Format 2: PDF/DOCX with ++++ marking
-
 ```
-1. Question text here?
+1. Question text?
 A) Wrong answer
 B) Correct answer ++++
 C) Wrong answer
 D) Wrong answer
+
+2. Another question?
+A) Wrong
+B) Wrong
+C) Correct ++++
+D) Wrong
 ```
 
 ### Format 3: Separate Files
@@ -159,78 +139,138 @@ A) Option 1
 B) Option 2
 C) Option 3
 D) Option 4
+
+2. Another question?
+A) Option A
+B) Option B
+C) Option C
 ```
 
 **answers.pdf:**
 ```
 1. B
 2. C
-3. A
 ```
 
-## Managing Access Codes
+## User Workflow
 
-### Access Code Features:
-- **Subject Restriction**: Limit code to specific subject
-- **Max Attempts**: Set maximum number of tests (0 = unlimited)
-- **Expiration Date**: Set when code expires
-- **Active/Inactive**: Enable/disable codes
+1. Go to `http://127.0.0.1:8000/`
+2. Enter access code and name
+3. See all available tests (grouped by subject)
+4. Click "Start Test"
+5. Answer questions
+6. Submit test
+7. View detailed results
 
-### Viewing Results:
-1. Go to **Quiz** → **Test sessions**
-2. View all user sessions with scores
-3. Click on a session to see detailed answers
+## Features Explained
 
-## Admin Actions Reference
+### Access Codes
+- **Unique Code**: 8-character code (e.g., "AB12CD34")
+- **User Name**: Saved when code is first used
+- **Subject Restriction**: Optionally limit to one subject
+- **Max Attempts**: Limit number of tests (0 = unlimited)
+- **Status Tracking**: See who used which code
 
-### Test Actions:
-- **Parse selected test files**: Extract questions from uploaded files
-- **Publish selected tests**: Make tests available to users
-- **Unpublish selected tests**: Hide tests from users
+### Test Settings
+- **Time Limit**: Auto-submit when time runs out
+- **Passing Score**: Minimum percentage to pass
+- **Published Status**: Control test availability
 
-### Access Code Actions:
-- **Generate new access codes**: Bulk create access codes
-- **Deactivate selected codes**: Disable codes
+### Results Tracking
+- See all user sessions
+- Filter by subject
+- View detailed answers for each session
+- Track pass/fail rates
+
+## File Parsing Logic
+
+The system automatically detects:
+1. Question numbers (1., 2., etc.)
+2. Options (A), B), C), D) or A. B. C. D.
+3. Correct answer markers (# or +++)
+4. Question separators (==== or ++++)
 
 ## Troubleshooting
 
+### Users not showing in database?
+**Fixed!** The login bug has been resolved. User names now properly save to the database.
+
+### File parsing failed?
+1. Check file format matches selected answer marking
+2. Ensure consistent formatting throughout file
+3. Try "Reparse File" button
+4. Check admin panel for error messages
+
 ### Tests not appearing for users?
-- Ensure test is **parsed** (is_parsed = True)
-- Ensure test is **published** (is_published = True)
-- Check that subject has published tests
+1. Ensure test is **published** (not draft)
+2. Check that test has questions (parsed successfully)
+3. Verify access code isn't restricted to different subject
 
-### File parsing errors?
-- Verify file format matches selected answer marking pattern
-- Check that file is not corrupted
-- Ensure text can be extracted from PDF
-- For DOCX, ensure proper separators (====, ++++)
+### Access code not working?
+1. Check if code is active
+2. Verify code hasn't expired
+3. Check max attempts not exceeded
 
-### Access code issues?
-- Check if code is active
-- Check if code has expired
-- Verify max attempts not exceeded
+## Admin Panel Navigation
+
+- **Dashboard**: Overview and statistics
+- **Subjects**: Manage subjects and their tests
+- **Access Codes**: Generate and manage user codes
+- **Results**: View all test sessions and detailed answers
 
 ## Database Models
 
-- **Subject**: Test categories
-- **Test**: Test information and files
+- **Subject**: Test categories/subjects
+- **Test**: Tests with file uploads
 - **Question**: Individual questions
-- **Option**: Answer options for questions
+- **Option**: Multiple choice options
 - **AccessCode**: User access codes
-- **TestSession**: User test sessions
-- **UserAnswer**: Individual user answers
+- **TestSession**: User test attempts
+- **UserAnswer**: Individual answers
+
+## URLs
+
+### User URLs
+- `/` - Login
+- `/tests/` - Test list
+- `/test/{id}/start/` - Start test
+- `/test/take/` - Take test
+- `/test/results/{id}/` - View results
+
+### Admin URLs
+- `/admin-panel/login/` - Admin login
+- `/admin-panel/` - Dashboard
+- `/admin-panel/subjects/` - Manage subjects
+- `/admin-panel/codes/` - Manage access codes
+- `/admin-panel/results/` - View results
+
+## Tips for Best Results
+
+1. **Keep file formatting consistent**
+2. **Use clear question separators** (====, ++++)
+3. **Test with small file first** to verify parsing
+4. **Review parsed questions** before publishing
+5. **Generate codes in batches** for easier tracking
+6. **Regular backups** of database
 
 ## Security Notes
 
-For production deployment:
+For production:
 1. Change `SECRET_KEY` in settings.py
 2. Set `DEBUG = False`
 3. Configure `ALLOWED_HOSTS`
-4. Use a production database (PostgreSQL, MySQL)
-5. Set up proper media file storage
+4. Use production database (PostgreSQL recommended)
+5. Set up proper file storage
 6. Enable HTTPS
-7. Configure CSRF settings
+7. Regular security updates
 
 ## Support
 
-For issues or questions, please contact the system administrator.
+All major issues have been fixed:
+- ✅ User login database storage
+- ✅ Custom admin panel
+- ✅ Simplified user interface
+- ✅ Automatic file parsing
+- ✅ One-step test upload
+
+The platform is now simple, clean, and fully functional!
