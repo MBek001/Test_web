@@ -9,13 +9,38 @@ from openai import OpenAI
 
 
 class AIQuestionParser:
-    """AI-powered question parser using OpenAI for 100% accuracy"""
+    """AI-powered question parser using OpenAI"""
 
     def __init__(self):
         self.client = None
         api_key = os.getenv('OPENAI_API_KEY')
         if api_key:
             self.client = OpenAI(api_key=api_key)
+
+    def convert_office_math_to_latex(self, text: str) -> str:
+        """Convert Office Math ML to LaTeX"""
+
+        def convert_matrix(match):
+            matrix_content = match.group(1)
+            rows = matrix_content.split('##')
+            latex_rows = []
+            for row in rows:
+                cols = row.strip().split('#')
+                cols = [c.strip().replace('"', '') for c in cols]
+                latex_rows.append(' & '.join(cols))
+            matrix_latex = ' \\\\ '.join(latex_rows)
+
+            if 'left (' in match.group(0) or 'left(' in match.group(0):
+                return f"$\\begin{{pmatrix}} {matrix_latex} \\end{{pmatrix}}$"
+            elif 'left [' in match.group(0) or 'left[' in match.group(0):
+                return f"$\\begin{{bmatrix}} {matrix_latex} \\end{{bmatrix}}$"
+            else:
+                return f"$\\begin{{matrix}} {matrix_latex} \\end{{matrix}}$"
+
+        text = re.sub(r'left\s*[\(\[]?\s*matrix\s*\{([^}]+)\}\s*right\s*[\)\]]?', convert_matrix, text, flags=re.IGNORECASE)
+        text = re.sub(r'matrix\s*\{([^}]+)\}', convert_matrix, text, flags=re.IGNORECASE)
+
+        return text
 
     def extract_text_from_file(self, file_path: str) -> str:
         """Extract raw text from PDF or DOCX"""
@@ -52,21 +77,15 @@ class AIQuestionParser:
         for paragraph in doc.paragraphs:
             para_text = paragraph.text
 
-            # Check for equations in paragraph
             for run in paragraph.runs:
-                # Check if run contains equation
                 if run.element.xml:
-                    # Look for math/equation elements
                     if 'w:drawing' in run.element.xml or 'm:oMath' in run.element.xml:
-                        # Try to extract equation text or mark it
                         equation_text = self._extract_equation_from_run(run)
                         if equation_text and equation_text not in para_text:
                             para_text += f" {equation_text} "
 
-            # Also check for inline shapes and equations at paragraph level
             para_xml = paragraph._element.xml.decode('utf-8') if isinstance(paragraph._element.xml, bytes) else str(paragraph._element.xml)
             if 'm:oMath' in para_xml or 'm:oMathPara' in para_xml:
-                # Contains equation
                 equation_markers = self._extract_equations_from_paragraph(paragraph)
                 for eq in equation_markers:
                     if eq not in para_text:
@@ -77,19 +96,16 @@ class AIQuestionParser:
         return '\n'.join(full_text)
 
     def _extract_equation_from_run(self, run) -> str:
-        """Try to extract readable equation text from a run"""
+        """Extract equation text from run"""
         try:
             xml_str = run.element.xml.decode('utf-8') if isinstance(run.element.xml, bytes) else str(run.element.xml)
 
-            # Look for math text content
             if 'm:t' in xml_str:
                 import re
-                # Extract content between m:t tags
                 matches = re.findall(r'<m:t>([^<]+)</m:t>', xml_str)
                 if matches:
                     return ''.join(matches)
 
-            # If equation is complex, mark it as FORMULA
             if 'm:oMath' in xml_str:
                 return "[FORMULA]"
 
@@ -98,13 +114,12 @@ class AIQuestionParser:
         return ""
 
     def _extract_equations_from_paragraph(self, paragraph) -> list:
-        """Extract equation markers from paragraph"""
+        """Extract equations from paragraph"""
         equations = []
         try:
             xml_str = paragraph._element.xml.decode('utf-8') if isinstance(paragraph._element.xml, bytes) else str(paragraph._element.xml)
 
             import re
-            # Try to extract math text
             math_texts = re.findall(r'<m:t>([^<]+)</m:t>', xml_str)
             if math_texts:
                 equations.append(''.join(math_texts))
@@ -116,28 +131,25 @@ class AIQuestionParser:
         return equations
 
     def parse_with_ai(self, file_path: str, answer_marking: str = None, answer_file_path: str = None) -> List[Dict]:
-        """
-        Parse questions using OpenAI for 100% accuracy
-        Returns list of questions with options and correct answers
-        """
-        # Extract text from files
+        """Parse questions using OpenAI"""
         question_text = self.extract_text_from_file(file_path)
 
         answer_text = ""
         if answer_file_path:
             answer_text = self.extract_text_from_file(answer_file_path)
 
-        # Use AI to parse questions
         if self.client:
             return self._parse_with_openai(question_text, answer_text, answer_marking)
         else:
-            # Fallback to regex parsing
             return self._parse_with_regex(question_text, answer_text, answer_marking)
 
     def _parse_with_openai(self, question_text: str, answer_text: str, answer_marking: str) -> List[Dict]:
-        """Use OpenAI GPT-4 to parse questions perfectly"""
+        """Use OpenAI to parse questions"""
 
-        # Build prompt based on answer marking type
+        question_text = self.convert_office_math_to_latex(question_text)
+        if answer_text:
+            answer_text = self.convert_office_math_to_latex(answer_text)
+
         if answer_text:
             prompt = f"""You are a precise question parser. Extract ALL questions and answers from the text below.
 
@@ -161,12 +173,16 @@ CRITICAL INSTRUCTIONS:
 IMPORTANT: Mathematical formulas may appear as [FORMULA] or as text like "matrix", "A=", numbers, etc.
 Keep ALL mathematical content in the question and option text.
 
-FORMULA HANDLING:
-- If you see matrix notation or special math symbols, convert to LaTeX format
-- Example: matrix with elements becomes $\\begin{{bmatrix}} 2 & 4 & 1 \\\\ -1 & 3 & -2 \\end{{bmatrix}}$
-- If you see simple equations like "A=", "x^2", keep them but wrap in $ symbols for proper rendering
-- Keep [FORMULA] markers if formula cannot be interpreted
-- Use LaTeX syntax when possible: wrap math in $ for inline or $$ for display
+FORMULA HANDLING - VERY IMPORTANT:
+- Convert Office Math ML format to LaTeX (e.g., "left (matrix {{...}} right )" → "$\\begin{{bmatrix}}...$")
+- Matrix format: "matrix {{2 # 4 # 1 ## -1 # 3 # -2}}" → "$\\begin{{bmatrix}} 2 & 4 & 1 \\\\ -1 & 3 & -2 \\end{{bmatrix}}$"
+- In matrices, "#" separates columns, "##" separates rows
+- "left (" and "right )" indicate parentheses around matrices
+- Simple equations: wrap in $ symbols (e.g., "x^2" → "$x^2$", "A=" → "$A=$")
+- Fractions: "frac{{a}}{{b}}" → "$\\frac{{a}}{{b}}$"
+- Square roots: "sqrt{{x}}" → "$\\sqrt{{x}}$"
+- Subscripts/superscripts: "x_1", "x^2" → "$x_1$", "$x^2$"
+- Keep [FORMULA] only if formula cannot be interpreted
 
 Example: If answer key says "1. B", then for question 1, option B should have "is_correct": true
 
@@ -216,12 +232,16 @@ CRITICAL INSTRUCTIONS:
 IMPORTANT: Mathematical formulas may appear as [FORMULA] or as text like "matrix", "A=", numbers, etc.
 Keep ALL mathematical content in the question and option text.
 
-FORMULA HANDLING:
-- If you see matrix notation or special math symbols, convert to LaTeX format
-- Example: matrix with elements becomes $\\begin{{bmatrix}} 2 & 4 & 1 \\\\ -1 & 3 & -2 \\end{{bmatrix}}$
-- If you see simple equations like "A=", "x^2", keep them but wrap in $ symbols for proper rendering
-- Keep [FORMULA] markers if formula cannot be interpreted
-- Use LaTeX syntax when possible: wrap math in $ for inline or $$ for display
+FORMULA HANDLING - VERY IMPORTANT:
+- Convert Office Math ML format to LaTeX (e.g., "left (matrix {{...}} right )" → "$\\begin{{bmatrix}}...$")
+- Matrix format: "matrix {{2 # 4 # 1 ## -1 # 3 # -2}}" → "$\\begin{{bmatrix}} 2 & 4 & 1 \\\\ -1 & 3 & -2 \\end{{bmatrix}}$"
+- In matrices, "#" separates columns, "##" separates rows
+- "left (" and "right )" indicate parentheses around matrices
+- Simple equations: wrap in $ symbols (e.g., "x^2" → "$x^2$", "A=" → "$A=$")
+- Fractions: "frac{{a}}{{b}}" → "$\\frac{{a}}{{b}}$"
+- Square roots: "sqrt{{x}}" → "$\\sqrt{{x}}$"
+- Subscripts/superscripts: "x_1", "x^2" → "$x_1$", "$x^2$"
+- Keep [FORMULA] only if formula cannot be interpreted
 
 Return JSON in this EXACT format (must be valid JSON):
 {{

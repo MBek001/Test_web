@@ -31,4 +31,8 @@ urlpatterns = [
     # Results
     path('admin/results/', views.admin_results, name='admin_results'),
     path('admin/session/<int:session_id>/', views.admin_session_detail, name='admin_session_detail'),
+
+    # Users
+    path('admin/users/', views.admin_users, name='admin_users'),
+    path('admin/users/<str:user_name>/<str:access_code>/', views.admin_user_detail, name='admin_user_detail'),
 ]

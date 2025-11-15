@@ -3,7 +3,8 @@ from django.contrib.auth import authenticate, login as auth_login, logout as aut
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
 from django.utils import timezone
-from django.db.models import Count, Avg, Q
+from django.db import models
+from django.db.models import Count, Avg, Q, Max
 from .models import Subject, Test, Question, Option, AccessCode, TestSession, UserAnswer
 from .ai_parser import AIQuestionParser
 import os
@@ -18,16 +19,12 @@ def is_staff(user):
 
 
 def parse_test_file(test):
-    """Parse test file using AI for 100% accuracy"""
+    """Parse test file using AI"""
     try:
-        # Initialize AI parser
         parser = AIQuestionParser()
-
-        # Get file paths
         question_file_path = test.question_file.path
         answer_file_path = test.answer_file.path if test.answer_file else None
 
-        # Parse with AI
         questions_data = parser.parse_with_ai(
             question_file_path,
             test.answer_marking,
@@ -37,7 +34,6 @@ def parse_test_file(test):
         if not questions_data:
             return False
 
-        # Create questions and options
         for q_data in questions_data:
             question = Question.objects.create(
                 test=test,
@@ -66,10 +62,9 @@ def parse_test_file(test):
 # ============================================================================
 
 def admin_register(request):
-    """One-time admin registration - only allows ONE admin"""
+    """One-time admin registration"""
     from django.contrib.auth.models import User
 
-    # Check if any admin already exists
     if User.objects.filter(is_staff=True).exists():
         messages.error(request, 'Admin already registered. Please login.')
         return redirect('admin_login')
@@ -91,7 +86,6 @@ def admin_register(request):
             messages.error(request, 'Password must be at least 6 characters.')
             return redirect('admin_register')
 
-        # Create admin user
         try:
             user = User.objects.create_user(
                 username=username,
@@ -109,10 +103,9 @@ def admin_register(request):
 
 
 def admin_login(request):
-    """Admin login page"""
+    """Admin login"""
     from django.contrib.auth.models import User
 
-    # If no admin exists, redirect to registration
     if not User.objects.filter(is_staff=True).exists():
         messages.info(request, 'No admin account exists. Please register first.')
         return redirect('admin_register')
@@ -146,7 +139,6 @@ def admin_logout(request):
 @user_passes_test(is_staff)
 def admin_dashboard(request):
     """Admin dashboard"""
-    # Count used codes (codes with at least one session)
     used_codes = AccessCode.objects.annotate(
         session_count=Count('sessions')
     ).filter(session_count__gt=0).count()
@@ -375,12 +367,53 @@ def admin_session_detail(request, session_id):
     return render(request, 'admin_custom/session_detail.html', context)
 
 
+@login_required
+@user_passes_test(is_staff)
+def admin_users(request):
+    """View all users (from test sessions)"""
+    sessions = TestSession.objects.values('user_name', 'access_code__code').annotate(
+        total_tests=Count('id'),
+        completed_tests=Count('id', filter=Q(is_completed=True)),
+        avg_score=Avg('score', filter=Q(is_completed=True)),
+        last_activity=Max('started_at')
+    ).order_by('-last_activity')
+
+    context = {'users': sessions}
+    return render(request, 'admin_custom/users.html', context)
+
+
+@login_required
+@user_passes_test(is_staff)
+def admin_user_detail(request, user_name, access_code):
+    """View individual user details"""
+    from django.utils.http import unquote
+    user_name = unquote(user_name)
+
+    code_obj = get_object_or_404(AccessCode, code=access_code)
+    user_sessions = TestSession.objects.filter(
+        user_name=user_name,
+        access_code=code_obj
+    ).select_related('test', 'access_code').order_by('-started_at')
+
+    if request.method == 'POST' and 'delete_user' in request.POST:
+        user_sessions.delete()
+        messages.success(request, f'All sessions for {user_name} deleted successfully')
+        return redirect('admin_users')
+
+    context = {
+        'user_name': user_name,
+        'access_code': code_obj,
+        'sessions': user_sessions
+    }
+    return render(request, 'admin_custom/user_detail.html', context)
+
+
 # ============================================================================
 # USER VIEWS
 # ============================================================================
 
 def login_view(request):
-    """User login with access code - SUPPORTS MULTIPLE USERS"""
+    """User login with access code"""
     if request.method == 'POST':
         code = request.POST.get('code', '').strip().upper()
         name = request.POST.get('name', '').strip()
@@ -396,14 +429,12 @@ def login_view(request):
                 messages.error(request, 'This access code is expired or inactive.')
                 return redirect('login')
 
-            # Update first_used_at only once
             if not access_code.first_used_at:
                 access_code.first_used_at = timezone.now()
                 access_code.save()
 
-            # Store in session
             request.session['access_code_id'] = access_code.id
-            request.session['user_name'] = name  # Store user's name in session
+            request.session['user_name'] = name
 
             messages.success(request, f'Welcome, {name}!')
             return redirect('test_list')
@@ -415,13 +446,12 @@ def login_view(request):
 
 
 def test_list(request):
-    """List all available tests - SIMPLIFIED"""
+    """List available tests"""
     if 'access_code_id' not in request.session:
         return redirect('login')
 
     access_code = get_object_or_404(AccessCode, id=request.session['access_code_id'])
 
-    # Get published tests
     if access_code.subject:
         tests = Test.objects.filter(
             subject=access_code.subject,
@@ -434,7 +464,6 @@ def test_list(request):
             is_parsed=True
         ).select_related('subject').annotate(question_count=Count('questions'))
 
-    # Group by subject
     subjects_dict = {}
     for test in tests:
         subject_name = test.subject.name
@@ -446,7 +475,6 @@ def test_list(request):
             }
         subjects_dict[subject_name]['tests'].append(test)
 
-    # Check attempts per user
     user_name = request.session.get('user_name', '')
     user_sessions = TestSession.objects.filter(access_code=access_code, user_name=user_name)
     total_sessions = user_sessions.count()
@@ -485,7 +513,6 @@ def start_test(request, test_id):
     if request.method == 'POST':
         test_mode = request.POST.get('test_mode', 'batch_25')
 
-        # Create new test session with user_name and selected mode
         session = TestSession.objects.create(
             access_code=access_code,
             test=test,
@@ -496,7 +523,7 @@ def start_test(request, test_id):
 
         request.session['test_session_id'] = session.id
         request.session['test_start_time'] = timezone.now().isoformat()
-        request.session['current_question'] = 0  # For one-by-one mode
+        request.session['current_question'] = 0
 
         return redirect('take_test')
 
@@ -520,12 +547,10 @@ def take_test(request):
     all_questions = session.test.questions.all().order_by('order').prefetch_related('options')
     answered = UserAnswer.objects.filter(session=session).values_list('question_id', flat=True)
 
-    # ONE-BY-ONE MODE: Show one question at a time
     if session.test_mode == 'one_by_one':
         current_index = request.session.get('current_question', 0)
 
         if request.method == 'POST':
-            # Save current answer
             current_question = all_questions[current_index]
             option_id = request.POST.get(f'question_{current_question.id}')
             if option_id:
@@ -540,7 +565,6 @@ def take_test(request):
                 )
 
             if 'finish_test' in request.POST:
-                # Finish test
                 correct = UserAnswer.objects.filter(session=session, is_correct=True).count()
                 session.correct_answers = correct
                 session.total_questions = UserAnswer.objects.filter(session=session).count()
@@ -550,12 +574,10 @@ def take_test(request):
                 session.save()
                 return redirect('test_results', session_id=session.id)
 
-            # Move to next question
             current_index += 1
             request.session['current_question'] = current_index
 
             if current_index >= all_questions.count():
-                # All questions answered
                 messages.info(request, 'Barcha savollarga javob berdingiz. Testni yakunlashingiz mumkin.')
                 current_index = all_questions.count() - 1
                 request.session['current_question'] = current_index
@@ -563,7 +585,6 @@ def take_test(request):
             messages.success(request, 'Javob saqlandi!')
             return redirect('take_test')
 
-        # Show current question
         if current_index >= all_questions.count():
             current_index = all_questions.count() - 1
 
@@ -580,10 +601,8 @@ def take_test(request):
         }
         return render(request, 'quiz/take_test.html', context)
 
-    # BATCH_25 MODE: Show 25 questions at once
     else:
         if request.method == 'POST':
-            # Save answers for all 25 questions
             for question in all_questions[:25]:
                 option_id = request.POST.get(f'question_{question.id}')
                 if option_id:
@@ -609,7 +628,6 @@ def take_test(request):
             messages.success(request, 'Javoblar saqlandi!')
             return redirect('take_test')
 
-        # Calculate time remaining
         time_remaining = None
         if session.test.time_limit > 0:
             start_time = timezone.datetime.fromisoformat(request.session['test_start_time'])
