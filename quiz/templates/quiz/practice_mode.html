@@ -1,0 +1,66 @@
+{% extends 'quiz/base.html' %}
+
+{% block title %}Practice Mode{% endblock %}
+
+{% block extra_css %}
+<style>
+    .practice-header { background: #28a745; color: white; padding: 20px; border-radius: 10px; margin-bottom: 30px; text-align: center; }
+    .question-card { background: #f8f9fa; padding: 25px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #28a745; }
+    .question-number { background: #28a745; color: white; padding: 5px 12px; border-radius: 5px; display: inline-block; margin-bottom: 15px; font-weight: bold; }
+    .question-text { font-size: 18px; color: #333; margin-bottom: 20px; line-height: 1.6; }
+    .option-item { margin-bottom: 12px; }
+    .option-label { display: flex; align-items: flex-start; padding: 15px; background: white; border-radius: 5px; border: 2px solid #ddd; }
+    .option-label.correct { border-color: #28a745; background: #d4edda; }
+    .option-letter { min-width: 30px; font-weight: bold; color: #28a745; }
+    @media (max-width: 768px) {
+        .question-card { padding: 20px; }
+        .question-text { font-size: 16px; }
+        .option-label { padding: 12px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="practice-header">
+    <h2>🎯 Mashq Qilish</h2>
+    <p>Xato qilgan savollaringizni takrorlang</p>
+</div>
+
+{% if questions %}
+    <p style="margin-bottom: 20px; color: #666;">Jami: <strong>{{ questions.count }}</strong> ta savol</p>
+
+    {% for question in questions %}
+    <div class="question-card">
+        <div class="question-number">Savol {{ forloop.counter }}</div>
+        <div class="question-text">{{ question.text }}</div>
+
+        <div class="options-list">
+            {% for option in question.options.all %}
+            <div class="option-item">
+                <div class="option-label {% if option.is_correct %}correct{% endif %}">
+                    <div class="option-letter">{{ forloop.counter0|add:65|chr }})</div>
+                    <div style="flex: 1;">
+                        {{ option.text }}
+                        {% if option.is_correct %}
+                            <strong style="color: #28a745; margin-left: 10px;">✓ To'g'ri javob</strong>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div style="background: white; padding: 40px; text-align: center; border-radius: 10px;">
+        <h3>🎉 Ajoyib!</h3>
+        <p style="color: #666; margin-top: 15px;">Sizda xato qilgan savollar yo'q</p>
+        <a href="{% url 'test_list' %}" class="btn" style="margin-top: 20px;">Testlarga qaytish</a>
+    </div>
+{% endif %}
+
+<div style="margin-top: 30px; text-align: center;">
+    <a href="{% url 'my_statistics' %}" class="btn btn-secondary">📊 Statistikaga qaytish</a>
+    <a href="{% url 'test_list' %}" class="btn btn-secondary">🏠 Testlarga qaytish</a>
+</div>
+{% endblock %}

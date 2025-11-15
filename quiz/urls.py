@@ -8,6 +8,8 @@ urlpatterns = [
     path('test/<int:test_id>/start/', views.start_test, name='start_test'),
     path('test/take/', views.take_test, name='take_test'),
     path('test/results/<int:session_id>/', views.test_results, name='test_results'),
+    path('my-statistics/', views.my_statistics, name='my_statistics'),
+    path('practice/', views.practice_mode, name='practice_mode'),
     path('logout/', views.logout_view, name='logout'),
 
     # Admin routes - /admin redirects here
