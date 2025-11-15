@@ -187,5 +187,11 @@
     </div>
 
     {% block extra_js %}{% endblock %}
+
+    <script>
+        if (typeof MathJax !== 'undefined') {
+            MathJax.typesetPromise().catch((err) => console.log('MathJax typeset error:', err));
+        }
+    </script>
 </body>
 </html>

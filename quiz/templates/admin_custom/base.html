@@ -104,5 +104,11 @@
 
         {% block content %}{% endblock %}
     </div>
+
+    <script>
+        if (typeof MathJax !== 'undefined') {
+            MathJax.typesetPromise().catch((err) => console.log('MathJax typeset error:', err));
+        }
+    </script>
 </body>
 </html>

@@ -444,9 +444,16 @@ def login_view(request):
                 messages.error(request, 'This access code is expired or inactive.')
                 return redirect('login')
 
-            if not access_code.first_used_at:
-                access_code.first_used_at = timezone.now()
-                access_code.save()
+            existing_user = UserLogin.objects.filter(access_code=access_code).first()
+
+            if existing_user:
+                if existing_user.user_name != name:
+                    messages.error(request, f'This access code is already registered to another user.')
+                    return redirect('login')
+            else:
+                if not access_code.first_used_at:
+                    access_code.first_used_at = timezone.now()
+                    access_code.save()
 
             user_login, created = UserLogin.objects.update_or_create(
                 access_code=access_code,
@@ -766,6 +773,37 @@ def practice_mode(request):
     ).select_related('question').values_list('question__id', flat=True).distinct()
 
     questions = Question.objects.filter(id__in=wrong_questions).prefetch_related('options')
+
+    if request.method == 'POST':
+        correct_count = 0
+        total_count = questions.count()
+        results = []
+
+        for question in questions:
+            option_id = request.POST.get(f'question_{question.id}')
+            if option_id:
+                selected_option = get_object_or_404(Option, id=option_id, question=question)
+                is_correct = selected_option.is_correct
+                if is_correct:
+                    correct_count += 1
+
+                results.append({
+                    'question': question,
+                    'selected_option': selected_option,
+                    'is_correct': is_correct,
+                    'correct_option': question.options.filter(is_correct=True).first()
+                })
+
+        score = round((correct_count / total_count * 100), 2) if total_count > 0 else 0
+
+        context = {
+            'results': results,
+            'correct_count': correct_count,
+            'total_count': total_count,
+            'score': score,
+            'user_name': user_name
+        }
+        return render(request, 'quiz/practice_results.html', context)
 
     context = {
         'questions': questions,
