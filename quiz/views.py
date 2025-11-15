@@ -448,7 +448,7 @@ def login_view(request):
 
             if existing_user:
                 if existing_user.user_name != name:
-                    messages.error(request, f'This access code is already registered to another user.')
+                    messages.error(request, f'Bu kirish kodi allaqochon ishlatilgan , Yangi kod uchun Adminga murojat qiling ')
                     return redirect('login')
             else:
                 if not access_code.first_used_at:
