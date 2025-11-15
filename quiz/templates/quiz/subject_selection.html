@@ -1,0 +1,71 @@
+{% extends 'quiz/base.html' %}
+
+{% block title %}Select Subject - Quiz Platform{% endblock %}
+
+{% block extra_css %}
+<style>
+    .subjects-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+    }
+
+    .subject-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 30px;
+        border-radius: 10px;
+        color: white;
+        text-decoration: none;
+        transition: transform 0.3s, box-shadow 0.3s;
+        cursor: pointer;
+    }
+
+    .subject-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .subject-card h3 {
+        font-size: 24px;
+        margin-bottom: 10px;
+    }
+
+    .subject-card p {
+        opacity: 0.9;
+        line-height: 1.6;
+    }
+
+    .page-title {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+    }
+
+    .no-subjects {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2 class="page-title">Select a Subject</h2>
+
+{% if subjects %}
+<div class="subjects-grid">
+    {% for subject in subjects %}
+    <a href="{% url 'test_selection' subject.id %}" class="subject-card">
+        <h3>{{ subject.name }}</h3>
+        <p>{{ subject.description|default:"Click to view available tests" }}</p>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="no-subjects">
+    <h3>No subjects available</h3>
+    <p>Please contact the administrator.</p>
+</div>
+{% endif %}
+{% endblock %}

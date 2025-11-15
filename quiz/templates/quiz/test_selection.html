@@ -1,0 +1,114 @@
+{% extends 'quiz/base.html' %}
+
+{% block title %}Select Test - {{ subject.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .test-list {
+        margin-top: 20px;
+    }
+
+    .test-item {
+        background: #f8f9fa;
+        padding: 25px;
+        border-radius: 10px;
+        margin-bottom: 15px;
+        border-left: 5px solid #667eea;
+    }
+
+    .test-item h3 {
+        color: #333;
+        margin-bottom: 10px;
+    }
+
+    .test-item p {
+        color: #666;
+        margin-bottom: 15px;
+        line-height: 1.6;
+    }
+
+    .test-meta {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+    }
+
+    .test-meta span {
+        background: white;
+        padding: 8px 15px;
+        border-radius: 5px;
+        font-size: 14px;
+        color: #555;
+    }
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+
+    .page-header h2 {
+        color: #333;
+    }
+
+    .attempts-info {
+        background: #fff3cd;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        color: #856404;
+        text-align: center;
+    }
+
+    .no-tests {
+        text-align: center;
+        padding: 40px;
+        color: #666;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{{ subject.name }} - Tests</h2>
+    <a href="{% url 'subject_selection' %}" class="btn btn-secondary">Back to Subjects</a>
+</div>
+
+{% if remaining_attempts is not None %}
+<div class="attempts-info">
+    You have <strong>{{ remaining_attempts }}</strong> attempt(s) remaining
+</div>
+{% endif %}
+
+{% if tests %}
+<div class="test-list">
+    {% for test in tests %}
+    <div class="test-item">
+        <h3>{{ test.title }}</h3>
+        {% if test.description %}
+        <p>{{ test.description }}</p>
+        {% endif %}
+
+        <div class="test-meta">
+            <span>Questions: {{ test.questions.count }}</span>
+            {% if test.time_limit > 0 %}
+            <span>Time Limit: {{ test.time_limit }} minutes</span>
+            {% else %}
+            <span>No Time Limit</span>
+            {% endif %}
+            <span>Passing Score: {{ test.passing_score }}%</span>
+        </div>
+
+        <a href="{% url 'start_test' test.id %}" class="btn btn-success">Start Test</a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="no-tests">
+    <h3>No tests available</h3>
+    <p>There are no published tests in this subject yet.</p>
+</div>
+{% endif %}
+{% endblock %}
