@@ -1,0 +1,64 @@
+{% extends 'admin_custom/base.html' %}
+
+{% block title %}Upload Test - Admin Panel{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 30px;">Upload Test for {{ subject.name }}</h2>
+
+<div class="card">
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Test Title *</label>
+            <input type="text" name="title" required placeholder="e.g., Python Basics Test 1">
+        </div>
+        
+        <div class="form-group">
+            <label>Description</label>
+            <textarea name="description" placeholder="What does this test cover?"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>Question File *</label>
+            <input type="file" name="question_file" required accept=".pdf,.docx,.doc">
+            <small style="color: #7f8c8d; display: block; margin-top: 5px;">Upload PDF or DOCX file</small>
+        </div>
+
+        <div class="form-group">
+            <label>Answer Marking Pattern *</label>
+            <select name="answer_marking" required>
+                <option value="hash_start"># at start of correct answer (for DOCX)</option>
+                <option value="plus_end">+++ at end of correct answer</option>
+                <option value="separate_file">Answers in separate file</option>
+            </select>
+        </div>
+
+        <div class="form-group" id="answer_file_group" style="display: none;">
+            <label>Answer File (optional)</label>
+            <input type="file" name="answer_file" accept=".pdf,.docx,.doc">
+            <small style="color: #7f8c8d; display: block; margin-top: 5px;">Only needed if answers are in separate file</small>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label>Time Limit (minutes)</label>
+                <input type="number" name="time_limit" value="60" min="0" placeholder="0 for no limit">
+            </div>
+            <div class="form-group">
+                <label>Passing Score (%)</label>
+                <input type="number" name="passing_score" value="70" min="0" max="100">
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-success">Upload & Parse Test</button>
+        <a href="{% url 'admin_subject_detail' subject.id %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+
+<script>
+document.querySelector('[name="answer_marking"]').addEventListener('change', function() {
+    document.getElementById('answer_file_group').style.display = 
+        this.value === 'separate_file' ? 'block' : 'none';
+});
+</script>
+{% endblock %}

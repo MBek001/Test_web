@@ -1,0 +1,72 @@
+{% extends 'admin_custom/base.html' %}
+
+{% block title %}Access Codes - Admin Panel{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 30px;">Access Codes</h2>
+
+<div class="card">
+    <h3>Generate New Access Codes</h3>
+    <form method="post" style="margin-top: 20px;">
+        {% csrf_token %}
+        <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label>Number of Codes</label>
+                <input type="number" name="count" value="1" min="1" max="100" required>
+            </div>
+            <div class="form-group">
+                <label>Restrict to Subject (Optional)</label>
+                <select name="subject">
+                    <option value="">All Subjects</option>
+                    {% for subject in subjects %}
+                    <option value="{{ subject.id }}">{{ subject.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Max Attempts (0=unlimited)</label>
+                <input type="number" name="max_attempts" value="0" min="0">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-success">Generate Codes</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>All Access Codes</h3>
+    {% if codes %}
+    <table style="margin-top: 20px;">
+        <thead>
+            <tr>
+                <th>Code</th>
+                <th>User Name</th>
+                <th>Subject</th>
+                <th>Tests Taken</th>
+                <th>Status</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for code in codes %}
+            <tr>
+                <td><strong>{{ code.code }}</strong></td>
+                <td>{{ code.name|default:"Not used yet" }}</td>
+                <td>{{ code.subject|default:"All subjects" }}</td>
+                <td>{{ code.session_count }}</td>
+                <td>
+                    {% if code.is_active %}
+                    <span class="badge badge-success">Active</span>
+                    {% else %}
+                    <span class="badge badge-danger">Inactive</span>
+                    {% endif %}
+                </td>
+                <td>{{ code.created_at|date:"Y-m-d" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No access codes yet. Generate codes above.</p>
+    {% endif %}
+</div>
+{% endblock %}

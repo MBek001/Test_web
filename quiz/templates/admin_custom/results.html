@@ -1,0 +1,67 @@
+{% extends 'admin_custom/base.html' %}
+
+{% block title %}Results - Admin Panel{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 30px;">Test Results</h2>
+
+<div class="card">
+    <h3>Filter Results</h3>
+    <form method="get" style="margin-top: 15px;">
+        <div style="display: flex; gap: 15px; align-items: flex-end;">
+            <div class="form-group" style="flex: 1;">
+                <label>Subject</label>
+                <select name="subject">
+                    <option value="">All Subjects</option>
+                    {% for subject in subjects %}
+                    <option value="{{ subject.id }}" {% if request.GET.subject == subject.id|stringformat:"s" %}selected{% endif %}>{{ subject.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn">Filter</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h3>All Sessions</h3>
+    {% if sessions %}
+    <table style="margin-top: 20px;">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Test</th>
+                <th>Subject</th>
+                <th>Score</th>
+                <th>Correct/Total</th>
+                <th>Completed</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in sessions %}
+            <tr>
+                <td><strong>{{ session.access_code.name }}</strong></td>
+                <td>{{ session.test.title }}</td>
+                <td>{{ session.test.subject.name }}</td>
+                <td>
+                    {% if session.score >= session.test.passing_score %}
+                    <span class="badge badge-success">{{ session.score }}%</span>
+                    {% else %}
+                    <span class="badge badge-danger">{{ session.score }}%</span>
+                    {% endif %}
+                </td>
+                <td>{{ session.correct_answers }}/{{ session.total_questions }}</td>
+                <td>{{ session.completed_at|date:"Y-m-d H:i" }}</td>
+                <td>
+                    <a href="{% url 'admin_session_detail' session.id %}" class="btn">View Details</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No completed sessions yet.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends 'admin_custom/base.html' %}
+
+{% block title %}{{ test.title }} - Admin Panel{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <h2>{{ test.title }}</h2>
+    {% if test.is_published %}
+    <form method="post" style="display: inline;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="unpublish">
+        <button type="submit" class="btn btn-warning">Unpublish</button>
+    </form>
+    {% else %}
+    <form method="post" style="display: inline;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="publish">
+        <button type="submit" class="btn btn-success">Publish</button>
+    </form>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Test Settings</h3>
+    <form method="post" style="margin-top: 20px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update">
+        <div class="form-group">
+            <label>Title</label>
+            <input type="text" name="title" value="{{ test.title }}" required>
+        </div>
+        <div class="form-group">
+            <label>Description</label>
+            <textarea name="description">{{ test.description }}</textarea>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+            <div class="form-group">
+                <label>Time Limit (minutes)</label>
+                <input type="number" name="time_limit" value="{{ test.time_limit }}" min="0">
+            </div>
+            <div class="form-group">
+                <label>Passing Score (%)</label>
+                <input type="number" name="passing_score" value="{{ test.passing_score }}" min="0" max="100">
+            </div>
+        </div>
+        <button type="submit" class="btn">Update Settings</button>
+        <a href="{% url 'admin_subject_detail' test.subject.id %}" class="btn btn-secondary">Back to Subject</a>
+    </form>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3>Questions ({{ test.questions.count }})</h3>
+        <form method="post" style="display: inline;" onsubmit="return confirm('Reparse the file? This will delete all existing questions!');">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reparse">
+            <button type="submit" class="btn btn-secondary">Reparse File</button>
+        </form>
+    </div>
+    {% if questions %}
+    <div style="margin-top: 20px;">
+        {% for question in questions %}
+        <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #3498db;">
+            <strong>{{ question.order }}. {{ question.text }}</strong>
+            <ul style="margin-top: 10px; list-style: none;">
+                {% for option in question.options.all %}
+                <li style="padding: 5px 0; {% if option.is_correct %}color: #27ae60; font-weight: 600;{% endif %}">
+                    {% if option.is_correct %}✓{% else %}○{% endif %} {{ option.text }}
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p style="margin-top: 20px;">No questions parsed yet.</p>
+    {% endif %}
+</div>
+
+<div class="card" style="border: 1px solid #e74c3c;">
+    <h3 style="color: #e74c3c;">Danger Zone</h3>
+    <form method="post" onsubmit="return confirm('Delete this test permanently?');" style="margin-top: 15px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete">
+        <button type="submit" class="btn btn-danger">Delete Test</button>
+    </form>
+</div>
+{% endblock %}

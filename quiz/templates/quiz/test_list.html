@@ -1,0 +1,141 @@
+{% extends 'quiz/base.html' %}
+
+{% block title %}Available Tests{% endblock %}
+
+{% block extra_css %}
+<style>
+    .welcome-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    .welcome-section h2 {
+        font-size: 32px;
+        margin-bottom: 10px;
+    }
+    .subject-section {
+        margin-bottom: 40px;
+    }
+    .subject-title {
+        color: #2c3e50;
+        font-size: 24px;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 3px solid #667eea;
+    }
+    .subject-desc {
+        color: #7f8c8d;
+        margin-bottom: 20px;
+    }
+    .test-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 20px;
+    }
+    .test-card {
+        background: white;
+        border: 2px solid #ecf0f1;
+        border-radius: 8px;
+        padding: 20px;
+        transition: all 0.3s;
+    }
+    .test-card:hover {
+        border-color: #667eea;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        transform: translateY(-2px);
+    }
+    .test-card h3 {
+        color: #2c3e50;
+        margin-bottom: 10px;
+        font-size: 20px;
+    }
+    .test-meta {
+        display: flex;
+        gap: 15px;
+        margin: 15px 0;
+        flex-wrap: wrap;
+    }
+    .test-meta span {
+        background: #ecf0f1;
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 13px;
+        color: #555;
+    }
+    .no-tests {
+        text-align: center;
+        padding: 60px 20px;
+        color: #95a5a6;
+    }
+    .attempts-warning {
+        background: #fff3cd;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+        color: #856404;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="welcome-section">
+    <h2>Welcome, {{ user_name }}!</h2>
+    <p style="font-size: 18px; opacity: 0.9;">Choose a test below to begin</p>
+    {% if remaining_attempts is not None %}
+    <p style="margin-top: 10px; opacity: 0.8;">Remaining attempts: {{ remaining_attempts }}</p>
+    {% endif %}
+</div>
+
+{% if remaining_attempts is not None and remaining_attempts == 0 %}
+<div class="attempts-warning">
+    You have used all your attempts. Please contact the administrator for more access.
+</div>
+{% endif %}
+
+{% if subjects %}
+    {% for subject in subjects %}
+    <div class="subject-section">
+        <h3 class="subject-title">{{ subject.name }}</h3>
+        {% if subject.description %}
+        <p class="subject-desc">{{ subject.description }}</p>
+        {% endif %}
+
+        <div class="test-grid">
+            {% for test in subject.tests %}
+            <div class="test-card">
+                <h3>{{ test.title }}</h3>
+                {% if test.description %}
+                <p style="color: #7f8c8d; font-size: 14px; margin-bottom: 15px;">{{ test.description }}</p>
+                {% endif %}
+
+                <div class="test-meta">
+                    <span>{{ test.question_count }} Questions</span>
+                    {% if test.time_limit > 0 %}
+                    <span>{{ test.time_limit }} mins</span>
+                    {% else %}
+                    <span>No time limit</span>
+                    {% endif %}
+                    <span>Pass: {{ test.passing_score }}%</span>
+                </div>
+
+                {% if remaining_attempts is None or remaining_attempts > 0 %}
+                <a href="{% url 'start_test' test.id %}" class="btn" style="width: 100%; text-align: center;">Start Test</a>
+                {% else %}
+                <button class="btn btn-secondary" style="width: 100%;" disabled>No attempts left</button>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+<div class="no-tests">
+    <h3>No Tests Available</h3>
+    <p>There are no published tests at the moment. Please check back later.</p>
+</div>
+{% endif %}
+{% endblock %}

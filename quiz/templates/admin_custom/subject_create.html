@@ -1,0 +1,23 @@
+{% extends 'admin_custom/base.html' %}
+
+{% block title %}Create Subject - Admin Panel{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 30px;">Create New Subject</h2>
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Subject Name *</label>
+            <input type="text" name="subject_name" required placeholder="e.g., Python Programming">
+        </div>
+        <div class="form-group">
+            <label>Description</label>
+            <textarea name="subject_description" placeholder="Brief description of the subject"></textarea>
+        </div>
+        <button type="submit" class="btn btn-success">Create Subject</button>
+        <a href="{% url 'admin_subjects' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

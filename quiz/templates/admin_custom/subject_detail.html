@@ -1,0 +1,73 @@
+{% extends 'admin_custom/base.html' %}
+
+{% block title %}{{ subject.name }} - Admin Panel{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+    <h2>{{ subject.name }}</h2>
+    <a href="{% url 'admin_test_create' subject.id %}" class="btn btn-success">+ Upload Test</a>
+</div>
+
+<div class="card">
+    <h3>Subject Details</h3>
+    <form method="post" style="margin-top: 20px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update">
+        <div class="form-group">
+            <label>Name</label>
+            <input type="text" name="name" value="{{ subject.name }}" required>
+        </div>
+        <div class="form-group">
+            <label>Description</label>
+            <textarea name="description">{{ subject.description }}</textarea>
+        </div>
+        <button type="submit" class="btn">Update</button>
+        <a href="{% url 'admin_subjects' %}" class="btn btn-secondary">Back</a>
+    </form>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <h3 style="margin-bottom: 20px;">Tests in this Subject</h3>
+    {% if tests %}
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Questions</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for test in tests %}
+            <tr>
+                <td><strong>{{ test.title }}</strong></td>
+                <td>{{ test.question_count }}</td>
+                <td>
+                    {% if test.is_published %}
+                    <span class="badge badge-success">Published</span>
+                    {% else %}
+                    <span class="badge badge-warning">Draft</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'admin_test_detail' test.id %}" class="btn">Manage</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No tests in this subject yet. Upload your first test file!</p>
+    {% endif %}
+</div>
+
+<div class="card" style="margin-top: 20px; border: 1px solid #e74c3c;">
+    <h3 style="color: #e74c3c;">Danger Zone</h3>
+    <form method="post" onsubmit="return confirm('Are you sure? This will delete all tests in this subject!');" style="margin-top: 15px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="delete">
+        <button type="submit" class="btn btn-danger">Delete Subject</button>
+    </form>
+</div>
+{% endblock %}

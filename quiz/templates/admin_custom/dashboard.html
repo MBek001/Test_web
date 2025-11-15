@@ -1,0 +1,61 @@
+{% extends 'admin_custom/base.html' %}
+
+{% block title %}Dashboard - Admin Panel{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 30px;">Dashboard</h2>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <h3>{{ total_subjects }}</h3>
+        <p>Total Subjects</p>
+    </div>
+    <div class="stat-card">
+        <h3>{{ total_tests }}</h3>
+        <p>Total Tests</p>
+    </div>
+    <div class="stat-card">
+        <h3>{{ active_codes }}</h3>
+        <p>Active Codes</p>
+    </div>
+    <div class="stat-card">
+        <h3>{{ total_sessions }}</h3>
+        <p>Completed Sessions</p>
+    </div>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 20px;">Quick Actions</h3>
+    <a href="{% url 'admin_subject_create' %}" class="btn btn-success">Create New Subject</a>
+    <a href="{% url 'admin_codes' %}" class="btn">Generate Access Codes</a>
+    <a href="{% url 'admin_results' %}" class="btn btn-secondary">View Results</a>
+</div>
+
+<div class="card">
+    <h3 style="margin-bottom: 20px;">Recent Test Sessions</h3>
+    {% if recent_sessions %}
+    <table>
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Test</th>
+                <th>Score</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in recent_sessions %}
+            <tr>
+                <td>{{ session.access_code.name }}</td>
+                <td>{{ session.test.title }}</td>
+                <td>{{ session.score }}%</td>
+                <td>{{ session.completed_at|date:"Y-m-d H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No test sessions yet.</p>
+    {% endif %}
+</div>
+{% endblock %}
