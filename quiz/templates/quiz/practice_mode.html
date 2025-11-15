@@ -9,13 +9,15 @@
     .question-number { background: #28a745; color: white; padding: 5px 12px; border-radius: 5px; display: inline-block; margin-bottom: 15px; font-weight: bold; }
     .question-text { font-size: 18px; color: #333; margin-bottom: 20px; line-height: 1.6; }
     .option-item { margin-bottom: 12px; }
-    .option-label { display: flex; align-items: flex-start; padding: 15px; background: white; border-radius: 5px; border: 2px solid #ddd; }
-    .option-label.correct { border-color: #28a745; background: #d4edda; }
-    .option-letter { min-width: 30px; font-weight: bold; color: #28a745; }
+    .option-label { display: flex; align-items: center; padding: 15px; background: white; border-radius: 5px; border: 2px solid #ddd; cursor: pointer; transition: all 0.3s; }
+    .option-label:hover { background: #f0f0f0; }
+    .option-label input[type="radio"] { margin-right: 15px; width: 20px; height: 20px; cursor: pointer; }
+    .option-label:has(input[type="radio"]:checked) { border-color: #28a745; background: #e8f5e9; }
+    .submit-section { background: #f8f9fa; padding: 25px; border-radius: 10px; text-align: center; margin-top: 30px; }
     @media (max-width: 768px) {
         .question-card { padding: 20px; }
         .question-text { font-size: 16px; }
-        .option-label { padding: 12px; }
+        .option-label { padding: 12px; font-size: 14px; }
     }
 </style>
 {% endblock %}
@@ -23,34 +25,37 @@
 {% block content %}
 <div class="practice-header">
     <h2>🎯 Mashq Qilish</h2>
-    <p>Xato qilgan savollaringizni takrorlang</p>
+    <p>Xato qilgan savollaringizni qayta ishlang</p>
 </div>
 
 {% if questions %}
     <p style="margin-bottom: 20px; color: #666;">Jami: <strong>{{ questions.count }}</strong> ta savol</p>
 
-    {% for question in questions %}
-    <div class="question-card">
-        <div class="question-number">Savol {{ forloop.counter }}</div>
-        <div class="question-text">{{ question.text }}</div>
+    <form method="post" id="practiceForm">
+        {% csrf_token %}
+        {% for question in questions %}
+        <div class="question-card">
+            <div class="question-number">Savol {{ forloop.counter }}</div>
+            <div class="question-text">{{ question.text }}</div>
 
-        <div class="options-list">
-            {% for option in question.options.all %}
-            <div class="option-item">
-                <div class="option-label {% if option.is_correct %}correct{% endif %}">
-                    <div class="option-letter">{% if forloop.counter == 1 %}A{% elif forloop.counter == 2 %}B{% elif forloop.counter == 3 %}C{% elif forloop.counter == 4 %}D{% elif forloop.counter == 5 %}E{% endif %})</div>
-                    <div style="flex: 1;">
-                        {{ option.text }}
-                        {% if option.is_correct %}
-                            <strong style="color: #28a745; margin-left: 10px;">✓ To'g'ri javob</strong>
-                        {% endif %}
-                    </div>
+            <div class="options-list">
+                {% for option in question.options.all %}
+                <div class="option-item">
+                    <label class="option-label">
+                        <input type="radio" name="question_{{ question.id }}" value="{{ option.id }}" required>
+                        <span>{% if forloop.counter == 1 %}A{% elif forloop.counter == 2 %}B{% elif forloop.counter == 3 %}C{% elif forloop.counter == 4 %}D{% elif forloop.counter == 5 %}E{% endif %}) {{ option.text }}</span>
+                    </label>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
         </div>
-    </div>
-    {% endfor %}
+        {% endfor %}
+
+        <div class="submit-section">
+            <p style="margin-bottom: 20px; color: #666;">Barcha savollarga javob berdingizmi?</p>
+            <button type="submit" class="btn btn-success" style="font-size: 18px; padding: 15px 40px;">Tekshirish</button>
+        </div>
+    </form>
 {% else %}
     <div style="background: white; padding: 40px; text-align: center; border-radius: 10px;">
         <h3>🎉 Ajoyib!</h3>

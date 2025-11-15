@@ -1,0 +1,80 @@
+{% extends 'quiz/base.html' %}
+
+{% block title %}Practice Results{% endblock %}
+
+{% block extra_css %}
+<style>
+    .results-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 10px; margin-bottom: 30px; text-align: center; }
+    .score-card { background: white; padding: 30px; border-radius: 10px; margin-bottom: 30px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .score-number { font-size: 48px; font-weight: bold; color: #667eea; margin: 20px 0; }
+    .question-result { background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+    .question-result.correct { border-left: 5px solid #28a745; }
+    .question-result.incorrect { border-left: 5px solid #dc3545; }
+    .question-text { font-size: 16px; color: #333; margin-bottom: 15px; font-weight: 600; }
+    .answer-option { padding: 10px 15px; margin: 8px 0; border-radius: 5px; background: white; }
+    .answer-option.selected { background: #e3f2fd; border: 2px solid #2196f3; }
+    .answer-option.correct-answer { background: #d4edda; border: 2px solid #28a745; }
+    .answer-option.wrong-answer { background: #f8d7da; border: 2px solid #dc3545; }
+    @media (max-width: 768px) {
+        .results-header { padding: 20px; }
+        .score-number { font-size: 36px; }
+        .question-result { padding: 15px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="results-header">
+    <h2>📊 Mashq Natijalari</h2>
+    <p>Sizning natijalaringiz</p>
+</div>
+
+<div class="score-card">
+    <h3>Umumiy natija</h3>
+    <div class="score-number">{{ score }}%</div>
+    <p style="font-size: 18px; color: #666;">{{ correct_count }} / {{ total_count }} to'g'ri javob</p>
+    {% if score >= 70 %}
+    <p style="color: #28a745; font-size: 20px; margin-top: 20px;">🎉 Ajoyib natija!</p>
+    {% elif score >= 50 %}
+    <p style="color: #ff9800; font-size: 20px; margin-top: 20px;">👍 Yaxshi, lekin yaxshiroq bo'lishi mumkin!</p>
+    {% else %}
+    <p style="color: #dc3545; font-size: 20px; margin-top: 20px;">📚 Yana mashq qiling!</p>
+    {% endif %}
+</div>
+
+<h3 style="margin-bottom: 20px;">Batafsil natijalar:</h3>
+
+{% for result in results %}
+<div class="question-result {% if result.is_correct %}correct{% else %}incorrect{% endif %}">
+    <div style="display: flex; align-items: center; margin-bottom: 10px;">
+        <span style="background: {% if result.is_correct %}#28a745{% else %}#dc3545{% endif %}; color: white; padding: 5px 15px; border-radius: 5px; margin-right: 10px;">
+            Savol {{ forloop.counter }}
+        </span>
+        {% if result.is_correct %}
+        <span style="color: #28a745; font-weight: bold;">✓ To'g'ri</span>
+        {% else %}
+        <span style="color: #dc3545; font-weight: bold;">✗ Noto'g'ri</span>
+        {% endif %}
+    </div>
+
+    <div class="question-text">{{ result.question.text }}</div>
+
+    <div style="margin-top: 15px;">
+        {% if not result.is_correct %}
+        <div class="answer-option wrong-answer">
+            <strong>Sizning javobingiz:</strong> {{ result.selected_option.text }}
+        </div>
+        {% endif %}
+        <div class="answer-option correct-answer">
+            <strong>To'g'ri javob:</strong> {{ result.correct_option.text }}
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<div style="margin-top: 40px; text-align: center;">
+    <a href="{% url 'practice' %}" class="btn">🔄 Qayta mashq qilish</a>
+    <a href="{% url 'my_statistics' %}" class="btn btn-secondary">📊 Statistikaga qaytish</a>
+    <a href="{% url 'test_list' %}" class="btn btn-secondary">🏠 Testlarga qaytish</a>
+</div>
+{% endblock %}
