@@ -163,9 +163,10 @@
         <div class="header">
             <h1>Test Platformasi</h1>
             {% if user_name %}
-            <div class="user-info">
+            <div class="user-info" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <span>Xush kelibsiz, <strong>{{ user_name }}</strong></span>
-                <a href="{% url 'logout' %}" class="btn logout-btn" style="margin-left: 15px;">Chiqish</a>
+                <a href="{% url 'my_statistics' %}" class="btn" style="background: #28a745; padding: 8px 16px; font-size: 14px;">📊 Statistika</a>
+                <a href="{% url 'logout' %}" class="btn logout-btn">Chiqish</a>
             </div>
             {% endif %}
         </div>

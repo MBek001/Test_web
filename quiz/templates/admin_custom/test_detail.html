@@ -60,15 +60,39 @@
     {% if questions %}
     <div style="margin-top: 20px;">
         {% for question in questions %}
-        <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #3498db;">
-            <strong>{{ question.order }}. {{ question.text }}</strong>
-            <ul style="margin-top: 10px; list-style: none;">
+        <div style="background: #f8f9fa; padding: 15px; margin-bottom: 15px; border-radius: 5px; border-left: 4px solid #3498db;" id="q{{ question.id }}">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                <div style="flex: 1;">
+                    <form method="post" style="display: inline;">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="edit_question">
+                        <input type="hidden" name="question_id" value="{{ question.id }}">
+                        <strong>{{ question.order }}.</strong>
+                        <textarea name="question_text" style="width: 90%; padding: 8px; margin-left: 5px; border: 1px solid #ddd; border-radius: 4px;">{{ question.text }}</textarea>
+                        <button type="submit" class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px; margin-top: 5px;">💾 Save</button>
+                    </form>
+                </div>
+                <form method="post" style="display: inline;" onsubmit="return confirm('Delete this question?');">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_question">
+                    <input type="hidden" name="question_id" value="{{ question.id }}">
+                    <button type="submit" class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;">🗑️</button>
+                </form>
+            </div>
+            <div style="margin-top: 10px;">
                 {% for option in question.options.all %}
-                <li style="padding: 5px 0; {% if option.is_correct %}color: #27ae60; font-weight: 600;{% endif %}">
-                    {% if option.is_correct %}✓{% else %}○{% endif %} {{ option.text }}
-                </li>
+                <form method="post" style="margin-bottom: 8px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="edit_option">
+                    <input type="hidden" name="option_id" value="{{ option.id }}">
+                    <div style="display: flex; align-items: center; gap: 10px; background: white; padding: 8px; border-radius: 4px;">
+                        <input type="checkbox" name="correct_{{ option.id }}" {% if option.is_correct %}checked{% endif %} style="width: 20px; height: 20px;">
+                        <input type="text" name="option_text" value="{{ option.text }}" style="flex: 1; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                        <button type="submit" class="btn" style="padding: 5px 10px; font-size: 12px;">💾</button>
+                    </div>
+                </form>
                 {% endfor %}
-            </ul>
+            </div>
         </div>
         {% endfor %}
     </div>

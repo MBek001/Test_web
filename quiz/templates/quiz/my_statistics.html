@@ -1,0 +1,80 @@
+{% extends 'quiz/base.html' %}
+
+{% block title %}My Statistics{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .stat-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 25px; border-radius: 10px; text-align: center; }
+    .stat-box h3 { font-size: 42px; margin-bottom: 5px; }
+    .stat-box p { opacity: 0.9; }
+    .history-item { background: #f8f9fa; padding: 15px; margin-bottom: 10px; border-radius: 5px; border-left: 4px solid #667eea; }
+    .history-item:hover { background: #e9ecef; }
+    .wrong-item { background: #fff3cd; padding: 12px; margin-bottom: 8px; border-radius: 5px; border-left: 4px solid #ffc107; }
+    .practice-btn { background: #28a745; margin-top: 20px; text-align: center; }
+    @media (max-width: 768px) {
+        .stats-grid { grid-template-columns: 1fr; }
+        .stat-box h3 { font-size: 32px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2 style="margin-bottom: 30px;">📊 Mening Statistikam</h2>
+
+<div class="stats-grid">
+    <div class="stat-box">
+        <h3>{{ total_tests }}</h3>
+        <p>Jami testlar</p>
+    </div>
+    <div class="stat-box">
+        <h3>{{ avg_score }}%</h3>
+        <p>O'rtacha ball</p>
+    </div>
+    <div class="stat-box">
+        <h3>{{ best_score }}%</h3>
+        <p>Eng yuqori ball</p>
+    </div>
+</div>
+
+<div style="background: white; padding: 25px; border-radius: 10px; margin-bottom: 20px;">
+    <h3 style="margin-bottom: 20px;">📈 Oxirgi Testlar</h3>
+    {% if sessions %}
+        {% for session in sessions %}
+        <div class="history-item">
+            <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+                <div>
+                    <strong>{{ session.test.title }}</strong><br>
+                    <small style="color: #666;">{{ session.started_at|date:"d M Y, H:i" }}</small>
+                </div>
+                <div style="text-align: right;">
+                    <strong style="font-size: 20px; color: {% if session.score >= session.test.passing_score %}#28a745{% else %}#dc3545{% endif %};">{{ session.score }}%</strong><br>
+                    <small>{{ session.correct_answers }}/{{ session.total_questions }}</small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p style="color: #999; text-align: center;">Hali test topshirmadingiz</p>
+    {% endif %}
+</div>
+
+<div style="background: white; padding: 25px; border-radius: 10px;">
+    <h3 style="margin-bottom: 20px;">❌ Ko'p xato qilgan savollar</h3>
+    {% if wrong_answers %}
+        {% for item in wrong_answers %}
+        <div class="wrong-item">
+            <strong>{{ item.question__text|truncatewords:15 }}</strong><br>
+            <small style="color: #856404;">{{ item.wrong_count }} marta noto'g'ri</small>
+        </div>
+        {% endfor %}
+        <a href="{% url 'practice_mode' %}" class="btn practice-btn" style="width: 100%;">🎯 Mashq qilish</a>
+    {% else %}
+        <p style="color: #999; text-align: center;">Xatolar yo'q! 🎉</p>
+    {% endif %}
+</div>
+
+<div style="margin-top: 20px;">
+    <a href="{% url 'test_list' %}" class="btn btn-secondary">⬅️ Testlarga qaytish</a>
+</div>
+{% endblock %}

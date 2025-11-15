@@ -299,6 +299,29 @@ def admin_test_detail(request, test_id):
                 messages.error(request, 'Failed to parse.')
             return redirect('admin_test_detail', test_id=test.id)
 
+        elif action == 'edit_question':
+            question_id = request.POST.get('question_id')
+            question = get_object_or_404(Question, id=question_id, test=test)
+            question.text = request.POST.get('question_text')
+            question.save()
+            messages.success(request, 'Question updated!')
+
+        elif action == 'edit_option':
+            option_id = request.POST.get('option_id')
+            option = get_object_or_404(Option, id=option_id)
+            option.text = request.POST.get('option_text')
+            option.is_correct = request.POST.get(f'correct_{option_id}') == 'on'
+            option.save()
+
+            option.question.options.exclude(id=option_id).update(is_correct=False) if option.is_correct else None
+            messages.success(request, 'Option updated!')
+
+        elif action == 'delete_question':
+            question_id = request.POST.get('question_id')
+            Question.objects.filter(id=question_id, test=test).delete()
+            messages.success(request, 'Question deleted!')
+            return redirect('admin_test_detail', test_id=test.id)
+
     context = {'test': test, 'questions': questions}
     return render(request, 'admin_custom/test_detail.html', context)
 
@@ -548,6 +571,12 @@ def start_test(request, test_id):
         request.session['test_start_time'] = timezone.now().isoformat()
         request.session['current_question'] = 0
 
+        if test_mode == 'one_by_one':
+            import random
+            question_ids = list(test.questions.values_list('id', flat=True))
+            random.shuffle(question_ids)
+            request.session['question_order'] = question_ids
+
         return redirect('take_test')
 
     context = {
@@ -567,14 +596,27 @@ def take_test(request):
     if session.is_completed:
         return redirect('test_results', session_id=session.id)
 
-    all_questions = session.test.questions.all().order_by('order').prefetch_related('options')
+    if session.test_mode == 'one_by_one':
+        question_order = request.session.get('question_order', [])
+        if not question_order:
+            import random
+            question_order = list(session.test.questions.values_list('id', flat=True))
+            random.shuffle(question_order)
+            request.session['question_order'] = question_order
+
+        all_questions = Question.objects.filter(id__in=question_order).prefetch_related('options')
+        questions_dict = {q.id: q for q in all_questions}
+        ordered_questions = [questions_dict[qid] for qid in question_order if qid in questions_dict]
+    else:
+        ordered_questions = session.test.questions.all().order_by('order').prefetch_related('options')
+
     answered = UserAnswer.objects.filter(session=session).values_list('question_id', flat=True)
 
     if session.test_mode == 'one_by_one':
         current_index = request.session.get('current_question', 0)
 
         if request.method == 'POST':
-            current_question = all_questions[current_index]
+            current_question = ordered_questions[current_index]
             option_id = request.POST.get(f'question_{current_question.id}')
             if option_id:
                 option = get_object_or_404(Option, id=option_id, question=current_question)
@@ -600,24 +642,24 @@ def take_test(request):
             current_index += 1
             request.session['current_question'] = current_index
 
-            if current_index >= all_questions.count():
+            if current_index >= len(ordered_questions):
                 messages.info(request, 'Barcha savollarga javob berdingiz. Testni yakunlashingiz mumkin.')
-                current_index = all_questions.count() - 1
+                current_index = len(ordered_questions) - 1
                 request.session['current_question'] = current_index
 
             messages.success(request, 'Javob saqlandi!')
             return redirect('take_test')
 
-        if current_index >= all_questions.count():
-            current_index = all_questions.count() - 1
+        if current_index >= len(ordered_questions):
+            current_index = len(ordered_questions) - 1
 
-        current_question = all_questions[current_index]
+        current_question = ordered_questions[current_index]
 
         context = {
             'session': session,
             'question': current_question,
             'current_index': current_index,
-            'total_questions': all_questions.count(),
+            'total_questions': len(ordered_questions),
             'answered_count': UserAnswer.objects.filter(session=session).count(),
             'user_name': session.user_name,
             'mode': 'one_by_one'
@@ -626,7 +668,7 @@ def take_test(request):
 
     else:
         if request.method == 'POST':
-            for question in all_questions[:25]:
+            for question in ordered_questions[:25]:
                 option_id = request.POST.get(f'question_{question.id}')
                 if option_id:
                     option = get_object_or_404(Option, id=option_id, question=question)
@@ -663,7 +705,7 @@ def take_test(request):
 
         context = {
             'session': session,
-            'questions': all_questions[:25],
+            'questions': ordered_questions[:25],
             'answered_ids': list(answered),
             'time_remaining': time_remaining,
             'user_name': session.user_name,
@@ -693,6 +735,74 @@ def test_results(request, session_id):
         'user_name': session.user_name
     }
     return render(request, 'quiz/test_results.html', context)
+
+
+def my_statistics(request):
+    """User statistics dashboard"""
+    if 'access_code_id' not in request.session:
+        return redirect('login')
+
+    access_code = get_object_or_404(AccessCode, id=request.session['access_code_id'])
+    user_name = request.session['user_name']
+
+    sessions = TestSession.objects.filter(
+        access_code=access_code,
+        user_name=user_name,
+        is_completed=True
+    ).select_related('test').order_by('started_at')
+
+    total_tests = sessions.count()
+    if total_tests > 0:
+        avg_score = sessions.aggregate(Avg('score'))['score__avg']
+        best_score = sessions.aggregate(Max('score'))['score__max']
+        recent_sessions = sessions.order_by('-started_at')[:5]
+    else:
+        avg_score = 0
+        best_score = 0
+        recent_sessions = []
+
+    wrong_answers = UserAnswer.objects.filter(
+        session__access_code=access_code,
+        session__user_name=user_name,
+        session__is_completed=True,
+        is_correct=False
+    ).select_related('question').values('question__id', 'question__text').annotate(
+        wrong_count=Count('id')
+    ).order_by('-wrong_count')[:10]
+
+    context = {
+        'total_tests': total_tests,
+        'avg_score': round(avg_score, 1) if avg_score else 0,
+        'best_score': best_score,
+        'sessions': recent_sessions,
+        'wrong_answers': wrong_answers,
+        'user_name': user_name
+    }
+    return render(request, 'quiz/my_statistics.html', context)
+
+
+def practice_mode(request):
+    """Practice wrong answers"""
+    if 'access_code_id' not in request.session:
+        return redirect('login')
+
+    access_code = get_object_or_404(AccessCode, id=request.session['access_code_id'])
+    user_name = request.session['user_name']
+
+    wrong_questions = UserAnswer.objects.filter(
+        session__access_code=access_code,
+        session__user_name=user_name,
+        session__is_completed=True,
+        is_correct=False
+    ).select_related('question').values_list('question__id', flat=True).distinct()
+
+    questions = Question.objects.filter(id__in=wrong_questions).prefetch_related('options')
+
+    context = {
+        'questions': questions,
+        'user_name': user_name
+    }
+    return render(request, 'quiz/practice_mode.html', context)
 
 
 def logout_view(request):

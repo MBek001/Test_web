@@ -9,16 +9,17 @@
     <h3>Session Information</h3>
     <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
         <div>
-            <strong>User:</strong> {{ session.access_code.name }}<br>
+            <strong>User:</strong> {{ session.user_name }}<br>
             <strong>Access Code:</strong> {{ session.access_code.code }}<br>
             <strong>Test:</strong> {{ session.test.title }}<br>
-            <strong>Subject:</strong> {{ session.test.subject.name }}
+            <strong>Subject:</strong> {{ session.test.subject.name }}<br>
+            <strong>Test Mode:</strong> {{ session.get_test_mode_display }}
         </div>
         <div>
             <strong>Score:</strong> {{ session.score }}%<br>
             <strong>Correct Answers:</strong> {{ session.correct_answers }}/{{ session.total_questions }}<br>
             <strong>Started:</strong> {{ session.started_at|date:"Y-m-d H:i" }}<br>
-            <strong>Completed:</strong> {{ session.completed_at|date:"Y-m-d H:i" }}
+            <strong>Completed:</strong> {% if session.completed_at %}{{ session.completed_at|date:"Y-m-d H:i" }}{% else %}In Progress{% endif %}
         </div>
     </div>
 </div>
