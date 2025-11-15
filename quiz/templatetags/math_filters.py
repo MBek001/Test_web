@@ -22,9 +22,10 @@ def mathformat(text):
             text = f"${text}$"
         return mark_safe(text)
 
-    # Pattern for matrix: A=241-13-2323 (variable = concatenated numbers)
-    # This matches patterns like A=<digits and minuses>
-    matrix_pattern = r'\b([A-Z]\d*)\s*=\s*([0-9\-]{6,})\b'
+    # First, handle matrix patterns (must come before subscript conversion)
+    # Pattern: Letter optionally followed by digits, then =, then 6+ digits/minuses
+    # Removed word boundary to handle cases like A23A=...
+    matrix_pattern = r'([A-Z]\d*)\s*=\s*([0-9\-]{6,})(?=\s|$|[^0-9\-])'
 
     def convert_to_matrix(match):
         var_name = match.group(1)
@@ -56,6 +57,8 @@ def mathformat(text):
             rows, cols = 2, 3
         elif n == 8:
             rows, cols = 2, 4
+        elif n == 12:
+            rows, cols = 3, 4
         else:
             # Default to trying square root
             import math
@@ -81,18 +84,17 @@ def mathformat(text):
 
     text = re.sub(matrix_pattern, convert_to_matrix, text)
 
-    # Pattern for matrix variables: A32, A23, etc (subscript notation)
-    text = re.sub(r'\b([A-Z])(\d{2})\b', r'$\1_{\2}$', text)
+    # Pattern for matrix variables with subscripts: A32, A23, etc
+    # Only convert if not already part of a matrix pattern (not followed by =)
+    text = re.sub(r'(?<!\$)([A-Z])(\d{2})(?!\s*=)', r'$\1_{\2}$', text)
 
     # Pattern for simple variable subscripts: A1, A2, etc
-    text = re.sub(r'\b([A-Z])(\d)\b(?!\d)', r'$\1_{\2}$', text)
+    text = re.sub(r'(?<!\$)([A-Z])(\d)(?!\d)(?!\s*=)', r'$\1_{\2}$', text)
 
-    # Pattern for simple equations: A = (but not already processed)
-    text = re.sub(r'\b([A-Z])\s*=\s*(?![\\$])', r'$\1 = $', text)
-
-    # Clean up consecutive $ symbols
-    text = re.sub(r'\$\s*\$', '', text)
-    text = re.sub(r'\$\s*\$', '', text)  # Run twice to catch any remaining
+    # Clean up consecutive $ symbols and whitespace issues
+    text = re.sub(r'\$\s*\$', ' ', text)
+    text = re.sub(r'\$\s*\$', ' ', text)  # Run twice to catch any remaining
+    text = text.replace('$ $', ' ')
 
     # If we made changes, mark as safe HTML
     if text != original_text:
