@@ -305,6 +305,38 @@ def admin_test_detail(request, test_id):
             messages.success(request, 'Question deleted!')
             return redirect('admin_test_detail', test_id=test.id)
 
+        elif action == 'add_option':
+            question_id = request.POST.get('question_id')
+            question = get_object_or_404(Question, id=question_id, test=test)
+            option_text = request.POST.get('option_text', '').strip()
+            is_correct = request.POST.get('is_correct') == 'on'
+
+            if option_text:
+                max_order = question.options.aggregate(Max('order'))['order__max'] or 0
+                new_option = Option.objects.create(
+                    question=question,
+                    text=option_text,
+                    is_correct=is_correct,
+                    order=max_order + 1
+                )
+
+                if is_correct:
+                    question.options.exclude(id=new_option.id).update(is_correct=False)
+
+                messages.success(request, 'Option added successfully!')
+            else:
+                messages.error(request, 'Option text cannot be empty!')
+
+            return redirect(f'/admin/test/{test.id}/#q{question_id}')
+
+        elif action == 'delete_option':
+            option_id = request.POST.get('option_id')
+            option = get_object_or_404(Option, id=option_id)
+            question_id = option.question.id
+            option.delete()
+            messages.success(request, 'Option deleted!')
+            return redirect(f'/admin/test/{test.id}/#q{question_id}')
+
     context = {'test': test, 'questions': questions}
     return render(request, 'admin_custom/test_detail.html', context)
 

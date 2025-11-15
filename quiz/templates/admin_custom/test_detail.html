@@ -90,9 +90,22 @@
                         <input type="checkbox" name="correct_{{ option.id }}" {% if option.is_correct %}checked{% endif %} style="width: 20px; height: 20px;">
                         <input type="text" name="option_text" value="{{ option.text }}" style="flex: 1; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
                         <button type="submit" class="btn" style="padding: 5px 10px; font-size: 12px;">💾</button>
+                        <button type="button" onclick="this.closest('form').querySelector('input[name=action]').value='delete_option'; if(confirm('Delete this option?')) this.closest('form').submit();" class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;">🗑️</button>
                     </div>
                 </form>
                 {% endfor %}
+
+                <!-- Add New Option Form -->
+                <form method="post" style="margin-top: 10px; padding: 10px; background: #e8f4f8; border-radius: 4px;">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_option">
+                    <input type="hidden" name="question_id" value="{{ question.id }}">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" name="is_correct" style="width: 20px; height: 20px;">
+                        <input type="text" name="option_text" placeholder="New option text..." style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" required>
+                        <button type="submit" class="btn btn-success" style="padding: 5px 15px; font-size: 12px;">➕ Add Option</button>
+                    </div>
+                </form>
             </div>
         </div>
         {% endfor %}
