@@ -10,24 +10,25 @@ urlpatterns = [
     path('test/results/<int:session_id>/', views.test_results, name='test_results'),
     path('logout/', views.logout_view, name='logout'),
 
-    # Admin routes
-    path('admin-panel/login/', views.admin_login, name='admin_login'),
-    path('admin-panel/logout/', views.admin_logout, name='admin_logout'),
-    path('admin-panel/', views.admin_dashboard, name='admin_dashboard'),
+    # Admin routes - /admin redirects here
+    path('admin/', views.admin_dashboard, name='admin_dashboard'),  # Main admin entry point
+    path('admin/register/', views.admin_register, name='admin_register'),
+    path('admin/login/', views.admin_login, name='admin_login'),
+    path('admin/logout/', views.admin_logout, name='admin_logout'),
 
     # Subjects
-    path('admin-panel/subjects/', views.admin_subjects, name='admin_subjects'),
-    path('admin-panel/subjects/create/', views.admin_subject_create, name='admin_subject_create'),
-    path('admin-panel/subjects/<int:subject_id>/', views.admin_subject_detail, name='admin_subject_detail'),
+    path('admin/subjects/', views.admin_subjects, name='admin_subjects'),
+    path('admin/subjects/create/', views.admin_subject_create, name='admin_subject_create'),
+    path('admin/subjects/<int:subject_id>/', views.admin_subject_detail, name='admin_subject_detail'),
 
     # Tests
-    path('admin-panel/subjects/<int:subject_id>/test/create/', views.admin_test_create, name='admin_test_create'),
-    path('admin-panel/test/<int:test_id>/', views.admin_test_detail, name='admin_test_detail'),
+    path('admin/subjects/<int:subject_id>/test/create/', views.admin_test_create, name='admin_test_create'),
+    path('admin/test/<int:test_id>/', views.admin_test_detail, name='admin_test_detail'),
 
     # Access codes
-    path('admin-panel/codes/', views.admin_codes, name='admin_codes'),
+    path('admin/codes/', views.admin_codes, name='admin_codes'),
 
     # Results
-    path('admin-panel/results/', views.admin_results, name='admin_results'),
-    path('admin-panel/session/<int:session_id>/', views.admin_session_detail, name='admin_session_detail'),
+    path('admin/results/', views.admin_results, name='admin_results'),
+    path('admin/session/<int:session_id>/', views.admin_session_detail, name='admin_session_detail'),
 ]

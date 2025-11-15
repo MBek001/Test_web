@@ -65,8 +65,58 @@ def parse_test_file(test):
 # ADMIN VIEWS
 # ============================================================================
 
+def admin_register(request):
+    """One-time admin registration - only allows ONE admin"""
+    from django.contrib.auth.models import User
+
+    # Check if any admin already exists
+    if User.objects.filter(is_staff=True).exists():
+        messages.error(request, 'Admin already registered. Please login.')
+        return redirect('admin_login')
+
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        password_confirm = request.POST.get('password_confirm')
+
+        if not username or not password:
+            messages.error(request, 'Username and password are required.')
+            return redirect('admin_register')
+
+        if password != password_confirm:
+            messages.error(request, 'Passwords do not match.')
+            return redirect('admin_register')
+
+        if len(password) < 6:
+            messages.error(request, 'Password must be at least 6 characters.')
+            return redirect('admin_register')
+
+        # Create admin user
+        try:
+            user = User.objects.create_user(
+                username=username,
+                password=password,
+                is_staff=True,
+                is_superuser=True
+            )
+            messages.success(request, f'Admin account "{username}" created successfully! Please login.')
+            return redirect('admin_login')
+        except Exception as e:
+            messages.error(request, f'Error creating admin: {str(e)}')
+            return redirect('admin_register')
+
+    return render(request, 'admin_custom/register.html')
+
+
 def admin_login(request):
     """Admin login page"""
+    from django.contrib.auth.models import User
+
+    # If no admin exists, redirect to registration
+    if not User.objects.filter(is_staff=True).exists():
+        messages.info(request, 'No admin account exists. Please register first.')
+        return redirect('admin_register')
+
     if request.user.is_authenticated and request.user.is_staff:
         return redirect('admin_dashboard')
 
@@ -96,6 +146,11 @@ def admin_logout(request):
 @user_passes_test(is_staff)
 def admin_dashboard(request):
     """Admin dashboard"""
+    # Count used codes (codes with at least one session)
+    used_codes = AccessCode.objects.annotate(
+        session_count=Count('sessions')
+    ).filter(session_count__gt=0).count()
+
     context = {
         'total_subjects': Subject.objects.count(),
         'total_tests': Test.objects.count(),
@@ -103,7 +158,7 @@ def admin_dashboard(request):
         'total_sessions': TestSession.objects.filter(is_completed=True).count(),
         'recent_sessions': TestSession.objects.filter(is_completed=True).select_related('access_code', 'test').order_by('-completed_at')[:10],
         'active_codes': AccessCode.objects.filter(is_active=True).count(),
-        'used_codes': AccessCode.objects.filter(is_used=True).count(),
+        'used_codes': used_codes,
     }
     return render(request, 'admin_custom/dashboard.html', context)
 
