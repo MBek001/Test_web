@@ -1,4 +1,5 @@
 {% extends 'quiz/base.html' %}
+{% load math_filters %}
 
 {% block title %}Practice Results{% endblock %}
 
@@ -57,16 +58,16 @@
         {% endif %}
     </div>
 
-    <div class="question-text">{{ result.question.text }}</div>
+    <div class="question-text">{{ result.question.text|mathformat }}</div>
 
     <div style="margin-top: 15px;">
         {% if not result.is_correct %}
         <div class="answer-option wrong-answer">
-            <strong>Sizning javobingiz:</strong> {{ result.selected_option.text }}
+            <strong>Sizning javobingiz:</strong> {{ result.selected_option.text|mathformat }}
         </div>
         {% endif %}
         <div class="answer-option correct-answer">
-            <strong>To'g'ri javob:</strong> {{ result.correct_option.text }}
+            <strong>To'g'ri javob:</strong> {{ result.correct_option.text|mathformat }}
         </div>
     </div>
 </div>

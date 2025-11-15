@@ -1,4 +1,5 @@
 {% extends 'quiz/base.html' %}
+{% load math_filters %}
 
 {% block title %}Practice Mode{% endblock %}
 
@@ -36,14 +37,14 @@
         {% for question in questions %}
         <div class="question-card">
             <div class="question-number">Savol {{ forloop.counter }}</div>
-            <div class="question-text">{{ question.text }}</div>
+            <div class="question-text">{{ question.text|mathformat }}</div>
 
             <div class="options-list">
                 {% for option in question.options.all %}
                 <div class="option-item">
                     <label class="option-label">
                         <input type="radio" name="question_{{ question.id }}" value="{{ option.id }}" required>
-                        <span>{% if forloop.counter == 1 %}A{% elif forloop.counter == 2 %}B{% elif forloop.counter == 3 %}C{% elif forloop.counter == 4 %}D{% elif forloop.counter == 5 %}E{% endif %}) {{ option.text }}</span>
+                        <span>{% if forloop.counter == 1 %}A{% elif forloop.counter == 2 %}B{% elif forloop.counter == 3 %}C{% elif forloop.counter == 4 %}D{% elif forloop.counter == 5 %}E{% endif %}) {{ option.text|mathformat }}</span>
                     </label>
                 </div>
                 {% endfor %}
